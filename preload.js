@@ -8,6 +8,7 @@ contextBridge.exposeInMainWorld("desktopGame", {
   onReset: (callback) => ipcRenderer.on("reset-game", () => callback()),
   onPreviewHitEffects: (callback) => ipcRenderer.on("preview-hit-effects", () => callback()),
   onPreviewHomeRunEffects: (callback) => ipcRenderer.on("preview-home-run-effects", () => callback()),
+  onPreviewPitcherCollision: (callback) => ipcRenderer.on("preview-pitcher-collision", () => callback()),
   onShowRanking: (callback) => ipcRenderer.on("show-ranking", () => callback()),
   onBounds: (callback) => ipcRenderer.on("desktop-bounds", (_event, bounds) => callback(bounds)),
   rankingList: () => ipcRenderer.invoke("ranking-list"),

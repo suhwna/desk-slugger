@@ -1,6 +1,6 @@
 {
   "name": "desk-slugger",
-  "version": "0.7.34",
+  "version": "0.7.39",
   "description": "A transparent desktop-mate baseball game controlled by mouse movement.",
   "main": "main.js",
   "author": "Desk Slugger",

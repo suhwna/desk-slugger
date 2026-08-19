@@ -7,8 +7,10 @@ canvas { position:fixed;inset:0;display:block;width:100%;height:100%;background:
 .game-over-card { width:min(280px,calc(100vw - 12px));padding:16px;border:1px solid #363638;border-radius:10px;color:#f4f4f4;background:#1d1d1f;text-align:center; }
 .game-over-reason { display:block;margin:0 0 7px;color:#9a9a9e;font-size:10px;font-weight:600;letter-spacing:.08em; }
 .score-label { display:none; }
-.game-over-card output { display:block;margin:0 0 10px;color:#fff;font-size:34px;font-weight:700;line-height:1;font-variant-numeric:tabular-nums; }
+.game-over-card output { display:block;margin:0 0 5px;color:#fff;font-size:34px;font-weight:700;line-height:1;font-variant-numeric:tabular-nums; }
+.final-rank { display:block;margin:0 0 9px;color:var(--rank-color,#aaa);font-size:10px;font-weight:800;line-height:14px;letter-spacing:.12em; }
 .ranking-only output { display:none; }
+.ranking-only .final-rank { display:none; }
 .ranking-status { min-height:16px;margin:0 0 10px;color:#b7b7ba;font-size:11px;font-weight:500;line-height:16px; }
 .ranking-status.success { color:#7fd58a; }
 .ranking-status.failed { color:#ef8b82; }
@@ -23,6 +25,9 @@ canvas { position:fixed;inset:0;display:block;width:100%;height:100%;background:
 .ranking-list .rank-number { color:#737378;font-size:9px; }
 .ranking-list .rank-name { overflow:hidden;text-overflow:ellipsis;white-space:nowrap; }
 .ranking-list .rank-score { color:#ededee;font-weight:600; }
+.ranking-list li:nth-child(1) .rank-number { color:#f1cf57; }
+.ranking-list li:nth-child(2) .rank-number { color:#c7d0d8; }
+.ranking-list li:nth-child(3) .rank-number { color:#c47b48; }
 .ranking-list li.is-me { color:#98dda0;background:#26362a; }
 .ranking-list li.is-me .rank-number,.ranking-list li.is-me .rank-score { color:#98dda0; }
 .ranking-list .ranking-empty { display:block;height:auto;padding:14px 5px;color:#77777b;text-align:center; }

@@ -103,6 +103,29 @@
         frame(1, { head:[6,-87], neck:[6,-68], shoulder:[5,-62], hip:[4,-34], elbowL:[-10,-52], handL:[-4,-43], elbowR:[17,-49], handR:[20,-38], kneeL:[-10,-18], footL:[-22,0], kneeR:[15,-17], footR:[28,0] })
       ]
     },
+    pitcherCatch: {
+      duration: .82, loop: false, ease: "easeOut",
+      frames: [
+        frame(0, { head:[6,-87], neck:[6,-68], shoulder:[5,-62], hip:[4,-34], elbowL:[-10,-52], handL:[-4,-43], elbowR:[17,-49], handR:[20,-38], kneeL:[-10,-18], footL:[-22,0], kneeR:[15,-17], footR:[28,0] }),
+        frame(.12, { head:[2,-87], neck:[2,-68], shoulder:[1,-62], hip:[2,-34], elbowL:[-13,-57], handL:[-14,-50], elbowR:[13,-54], handR:[16,-44], kneeL:[-13,-20], footL:[-24,0], kneeR:[17,-20], footR:[30,0] }, "snap"),
+        frame(.27, { head:[-4,-84], neck:[-3,-65], shoulder:[-4,-59], hip:[-1,-32], elbowL:[-15,-59], handL:[-8,-57], elbowR:[9,-52], handR:[12,-43], kneeL:[-16,-21], footL:[-27,0], kneeR:[19,-20], footR:[31,0] }),
+        frame(.46, { head:[-6,-82], neck:[-5,-63], shoulder:[-6,-57], hip:[-3,-31], elbowL:[-13,-57], handL:[-4,-55], elbowR:[6,-49], handR:[10,-41], kneeL:[-17,-21], footL:[-28,0], kneeR:[19,-20], footR:[32,0] }),
+        frame(.68, { head:[-2,-85], neck:[-1,-66], shoulder:[-1,-60], hip:[0,-33], elbowL:[-11,-57], handL:[-1,-57], elbowR:[9,-52], handR:[3,-56], kneeL:[-15,-20], footL:[-27,0], kneeR:[18,-19], footR:[31,0] }),
+        frame(1, { head:[1,-88], neck:[1,-69], shoulder:[1,-63], hip:[2,-35], elbowL:[-9,-57], handL:[0,-59], elbowR:[11,-56], handR:[3,-59], kneeL:[-14,-19], footL:[-26,0], kneeR:[17,-19], footR:[30,0] })
+      ]
+    },
+    pitcherHit: {
+      duration: .9, loop: false, ease: "easeOut",
+      frames: [
+        frame(0, { head:[6,-87], neck:[6,-68], shoulder:[5,-62], hip:[4,-34], elbowL:[-10,-52], handL:[-4,-43], elbowR:[17,-49], handR:[20,-38], kneeL:[-10,-18], footL:[-22,0], kneeR:[15,-17], footR:[28,0] }),
+        frame(.1, { head:[0,-86], neck:[0,-67], shoulder:[-2,-61], hip:[1,-34], elbowL:[-9,-57], handL:[2,-52], elbowR:[14,-54], handR:[25,-43], kneeL:[-13,-20], footL:[-23,0], kneeR:[17,-20], footR:[29,0] }, "snap"),
+        frame(.24, { head:[-11,-81], neck:[-10,-63], shoulder:[-10,-57], hip:[-4,-31], elbowL:[-12,-55], handL:[1,-48], elbowR:[8,-50], handR:[25,-35], kneeL:[-17,-22], footL:[-25,0], kneeR:[20,-21], footR:[31,0] }, "snap"),
+        frame(.42, { head:[-15,-78], neck:[-14,-60], shoulder:[-13,-54], hip:[-7,-29], elbowL:[-15,-51], handL:[-2,-43], elbowR:[4,-46], handR:[22,-31], kneeL:[-19,-23], footL:[-27,0], kneeR:[21,-21], footR:[32,0] }),
+        frame(.62, { head:[-10,-81], neck:[-9,-62], shoulder:[-8,-56], hip:[-4,-31], elbowL:[-13,-53], handL:[-1,-47], elbowR:[7,-49], handR:[18,-36], kneeL:[-18,-22], footL:[-27,0], kneeR:[20,-20], footR:[32,0] }),
+        frame(.8, { head:[-3,-85], neck:[-2,-66], shoulder:[-2,-60], hip:[0,-33], elbowL:[-11,-55], handL:[-1,-51], elbowR:[10,-52], handR:[13,-43], kneeL:[-16,-20], footL:[-26,0], kneeR:[18,-19], footR:[31,0] }),
+        frame(1, { head:[1,-87], neck:[1,-68], shoulder:[1,-62], hip:[2,-34], elbowL:[-10,-55], handL:[-1,-52], elbowR:[11,-53], handR:[13,-45], kneeL:[-15,-19], footL:[-26,0], kneeR:[18,-19], footR:[31,0] })
+      ]
+    },
     batterReady: {
       duration: 1.45, loop: true,
       frames: [

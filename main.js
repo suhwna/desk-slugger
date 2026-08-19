@@ -124,8 +124,6 @@ function rebuildTrayMenu() {
     { label: "랭킹", click: showRanking },
     { label: "버전", click: showVersion },
     { label: updateBusy ? "업데이트 확인 중…" : "업데이트", enabled: !updateBusy, click: () => checkForUpdate() },
-    { label: "타격 이펙트 미리보기 (임시)", click: previewHitEffects },
-    { label: "홈런 이펙트 미리보기 (임시)", click: previewHomeRunEffects },
     { type: "separator" },
     { label: "종료", click: quitGame }
   ]));
@@ -279,6 +277,12 @@ function previewHomeRunEffects() {
   if (!overlay || overlay.isDestroyed()) return;
   if (!overlay.isVisible()) overlay.showInactive();
   overlay.webContents.send("preview-home-run-effects");
+}
+
+function previewPitcherCollision() {
+  if (!overlay || overlay.isDestroyed()) return;
+  if (!overlay.isVisible()) overlay.showInactive();
+  overlay.webContents.send("preview-pitcher-collision");
 }
 
 async function showVersion() {

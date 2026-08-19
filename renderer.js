@@ -7,6 +7,7 @@
   const gameOverReason = document.querySelector("#gameOverReason");
   const scoreLabel = document.querySelector(".score-label");
   const finalScoreOutput = document.querySelector("#finalScore");
+  const finalRankOutput = document.querySelector("#finalRank");
   const rankingStatus = document.querySelector("#rankingStatus");
   const rankingForm = document.querySelector("#rankingForm");
   const rankingList = document.querySelector("#rankingList");
@@ -142,6 +143,10 @@
   let rankingPreviousPaused = false;
   let effectPreviewUntil = 0;
   let effectPreviewTimers = [];
+  let pitcherCollisionPreview = false;
+  let pitcherReactionPose = null;
+  let pitcherReactionKind = "body";
+  let pitcherCatchTarget = null;
 
   const cursor = {
     x: width * .5, y: height * .5,
@@ -167,6 +172,11 @@
 
   function activeBatTier() {
     const record = Math.max(personalBest, score);
+    return batTierForScore(record);
+  }
+
+  function batTierForScore(value) {
+    const record = Math.max(0, Number(value) || 0);
     for (let index = BAT_TIERS.length - 1; index >= 0; index--) {
       if (record >= BAT_TIERS[index].min) return BAT_TIERS[index];
     }
@@ -301,6 +311,10 @@
     rankingRequestToken++;
     scoreSubmitted = false;
     effectPreviewUntil = 0;
+    pitcherCollisionPreview = false;
+    pitcherReactionPose = null;
+    pitcherReactionKind = "body";
+    pitcherCatchTarget = null;
     effectPreviewTimers.forEach(clearTimeout);
     effectPreviewTimers = [];
     rankingForm.hidden = true;
@@ -309,6 +323,7 @@
     gameOverPanel.classList.remove("ranking-only");
     scoreLabel.hidden = false;
     finalScoreOutput.hidden = false;
+    finalRankOutput.hidden = false;
     restartButton.textContent = "다시 하기";
     nicknameInput.disabled = false;
     submitScoreButton.disabled = false;
@@ -324,9 +339,9 @@
     rankingStatus.textContent = message;
   }
 
-  function renderRanking(entries = [], ownEntryId = null) {
+  function renderRanking(entries = [], ownEntryId = null, limit = 10) {
     rankingList.replaceChildren();
-    for (let index = 0; index < 10; index++) {
+    for (let index = 0; index < limit; index++) {
       const entry = entries[index] || null;
       const row = document.createElement("li");
       if (entry && ownEntryId !== null && Number(entry.id) === Number(ownEntryId)) row.classList.add("is-me");
@@ -345,10 +360,10 @@
     rankingList.hidden = false;
   }
 
-  async function loadRankingList(ownEntryId = null, token = null) {
+  async function loadRankingList(ownEntryId = null, token = null, limit = 10) {
     const result = await window.desktopGame.rankingList();
     if (token !== null && token !== rankingRequestToken) return;
-    renderRanking(result?.ranking || [], ownEntryId);
+    renderRanking(result?.ranking || [], ownEntryId, limit);
   }
 
   async function showStandaloneRanking() {
@@ -375,6 +390,7 @@
     gameOverReason.textContent = "RANKING";
     scoreLabel.hidden = true;
     finalScoreOutput.hidden = true;
+    finalRankOutput.hidden = true;
     rankingForm.hidden = true;
     rankingList.hidden = true;
     rankingList.replaceChildren();
@@ -403,6 +419,7 @@
     rankingList.replaceChildren();
     scoreLabel.hidden = false;
     finalScoreOutput.hidden = false;
+    finalRankOutput.hidden = false;
     restartButton.textContent = "다시 하기";
     document.body.classList.remove("result-open");
     window.desktopGame.setInteractive(false);
@@ -418,6 +435,11 @@
     rankingForm.hidden = true;
     rankingList.hidden = true;
     setRankingStatus("랭킹 확인 중");
+    window.desktopGame.rankingList().then((rankingResult) => {
+      if (token === rankingRequestToken && phase === "gameover") {
+        renderRanking(rankingResult?.ranking || [], null, 3);
+      }
+    }).catch(() => {});
     try {
       const result = await window.desktopGame.rankingQualify(score);
       if (token !== rankingRequestToken || phase !== "gameover") return;
@@ -1158,6 +1180,53 @@
     });
   }
 
+  function previewPitcherCollision() {
+    if (rankingOnlyOpen) closeStandaloneRanking();
+    resetGame();
+    pitcherCollisionPreview = true;
+    const field = scene();
+    const radius = 2.7 * field.unit;
+    phase = "flight";
+    phaseTime = 0;
+    pitchClock = -1;
+    nextPitchDelay = 999;
+    ball = {
+      x: field.pitcher.x - 96 * field.unit,
+      y: field.ground,
+      z: 14.5 * field.unit,
+      depth: 0,
+      depthV: 0,
+      vx: 470 * field.unit,
+      vz: 0,
+      baseR: radius,
+      r: radius,
+      spinPhase: 0,
+      spinRate: -31,
+      spinTilt: .08,
+      released: true,
+      hit: true,
+      caught: false,
+      grounded: false,
+      bounces: 0,
+      gravityScale: .025,
+      bounce: .28,
+      undercut: 0,
+      carry: 0,
+      maxHeight: 14.5 * field.unit,
+      predictedX: field.pitcher.x,
+      trail: [],
+      trajectoryIndex: 3,
+      trajectoryType: "LINER",
+      contactType: "LINER",
+      homerCandidate: false,
+      edgeBurst: false,
+      edgeHeight: null,
+      primaryEdgeCrossed: false,
+      boundaryScoreAwarded: false,
+      boundaryPoints: 0
+    };
+  }
+
   function burst(x, y, color, count, force = 1) {
     for (let index = 0; index < count; index++) {
       const angle = Math.random() * Math.PI * 2;
@@ -1603,8 +1672,284 @@
     score += reward.points;
   }
 
+  function pointSegmentDistanceSquared(point, start, end) {
+    const dx = end.x - start.x;
+    const dy = end.y - start.y;
+    const lengthSquared = dx * dx + dy * dy;
+    if (lengthSquared <= .0001) return (point.x - start.x) ** 2 + (point.y - start.y) ** 2;
+    const t = clamp(((point.x - start.x) * dx + (point.y - start.y) * dy) / lengthSquared, 0, 1);
+    const nearestX = start.x + dx * t;
+    const nearestY = start.y + dy * t;
+    return (point.x - nearestX) ** 2 + (point.y - nearestY) ** 2;
+  }
+
+  function predictedPitcherCatch() {
+    if (phase !== "flight" || !ball || ball.caught || ball.vx <= 0) return null;
+    const field = scene();
+    const catchX = field.pitcher.x - 10 * field.unit;
+    const time = (catchX - ball.x) / ball.vx;
+    if (time <= .015 || time > .28) return null;
+    const gravity = field.playHeight * 1.08 * (ball.gravityScale || 1);
+    const z = ball.z + ball.vz * time - gravity * time * time * .5;
+    const depth = ball.depth + ball.depthV * time;
+    const screenY = field.ground - Math.max(ball.r, z) + depth * .1;
+    if (screenY < field.ground - 31 * field.unit || screenY > field.ground - 1.5 * field.unit) return null;
+    return {
+      x: catchX,
+      y: screenY,
+      gloveY: clamp(screenY, field.ground - 27 * field.unit, field.ground - 6 * field.unit),
+      duration: clamp(time, .075, .24)
+    };
+  }
+
+  function beginPitcherCatch(target) {
+    const animation = pitcherAnimation();
+    pitcherReactionPose = window.StickMotion.resolvedPose(animation.clip, animation.time);
+    pitcherReactionKind = "glove";
+    pitcherCatchTarget = target;
+    pitchClock = -1;
+    phase = "pitcher-catching";
+    phaseTime = 0;
+  }
+
+  function pitcherCatchReachOverrides() {
+    const field = scene();
+    const base = pitcherReactionPose || window.StickMotion.resolvedPose("pitcherFieldReady", 0);
+    const ready = window.StickMotion.resolvedPose("pitcherFieldReady", 0);
+    const duration = Math.max(.075, pitcherCatchTarget?.duration || .16);
+    const reach = smooth(clamp(phaseTime / duration, 0, 1));
+    const result = Object.fromEntries(Object.keys(ready).map((joint) => [
+      joint,
+      [lerp(base[joint][0], ready[joint][0], reach), lerp(base[joint][1], ready[joint][1], reach)]
+    ]));
+    const scale = field.actorScale * .96;
+    const targetHand = [
+      (field.pitcher.x - pitcherCatchTarget.x) / scale,
+      (pitcherCatchTarget.gloveY - field.ground) / scale
+    ];
+    result.handL = [lerp(base.handL[0], targetHand[0], reach), lerp(base.handL[1], targetHand[1], reach)];
+    result.shoulder = [result.shoulder[0], result.shoulder[1] + 3 * reach];
+    result.hip = [result.hip[0], result.hip[1] + 2 * reach];
+    result.head = [result.head[0] + 2 * reach, result.head[1] + 2 * reach];
+    return result;
+  }
+
+  function pitcherCatchGloveWorld() {
+    const field = scene();
+    const overrides = pitcherCatchReachOverrides();
+    const rig = window.StickMotion.resolvedPose("pitcherFieldReady", 0, overrides);
+    const scale = field.actorScale * .96;
+    return {
+      x: field.pitcher.x - rig[GLOVE_HAND][0] * scale,
+      y: field.ground + rig[GLOVE_HAND][1] * scale,
+      rig
+    };
+  }
+
+  function completePitcherCatch() {
+    const field = scene();
+    const glove = pitcherCatchGloveWorld();
+    pitcherReactionPose = glove.rig;
+    pitcherReactionKind = "glove";
+    ball.caught = true;
+    ball.caughtBy = "pitcher";
+    ball.pitcherContactKind = "glove";
+    ball.x = glove.x;
+    ball.y = field.ground;
+    ball.z = Math.max(ball.r, field.ground - glove.y);
+    ball.vx = 0;
+    ball.vz = 0;
+    ball.depthV = 0;
+    ball.spinRate = 0;
+    ball.spinTilt = 0;
+    addImpact(glove.x, glove.y, {
+      strengthIndex: 1,
+      trajectoryIndex: clamp(ball.trajectoryIndex ?? 2, 0, BATTED_TRAJECTORIES.length - 1),
+      directionAngle: 0,
+      depth: 0,
+      power: .38,
+      lifeScale: .55
+    });
+    shake = Math.max(shake, 2.2);
+    impactFreeze = .035;
+    impactFreezeMax = impactFreeze;
+    phase = "pitcher-out";
+    phaseTime = 0;
+    lastOutcome = "PITCHER OUT";
+    pitcherCatchTarget = null;
+  }
+
+  function updatePitcherCatching(dt) {
+    if (!ball) return;
+    const field = scene();
+    const gravity = field.playHeight * 1.08 * (ball.gravityScale || 1);
+    ball.spinPhase += ball.spinRate * dt;
+    ball.x += ball.vx * dt;
+    ball.z += ball.vz * dt;
+    ball.vz -= gravity * dt;
+    ball.depth += ball.depthV * dt;
+    if (ball.z <= ball.r) {
+      ball.z = ball.r;
+      ball.vz = 0;
+      ball.grounded = true;
+      ball.vx *= Math.pow(.35, dt);
+    }
+    const glove = pitcherCatchGloveWorld();
+    recordBallTrail(ball.x, field.ground, ball.z, ball.r, "hit");
+    const ballY = field.ground - ball.z + ball.depth * .1;
+    const gloveDistance = Math.hypot(ball.x - glove.x, ballY - glove.y);
+    if (phaseTime >= (pitcherCatchTarget?.duration || .16) || gloveDistance <= ball.r + 4.5 * field.unit) {
+      completePitcherCatch();
+    }
+  }
+
+  function pitcherCollision(previous, current) {
+    const field = scene();
+    const animation = pitcherAnimation();
+    const rig = window.StickMotion.resolvedPose(animation.clip, animation.time);
+    const scale = field.actorScale * .96;
+    const map = (joint) => ({
+      x: field.pitcher.x - rig[joint][0] * scale,
+      y: field.ground + rig[joint][1] * scale
+    });
+    const joints = Object.fromEntries([
+      "head", "neck", "shoulder", "hip", "elbowL", "handL", "elbowR", "handR",
+      "kneeL", "footL", "kneeR", "footR"
+    ].map((joint) => [joint, map(joint)]));
+    const bodyRadius = ball.r + 4.2 * scale + .55 * field.unit;
+    const limbRadius = ball.r + 3.7 * scale + .4 * field.unit;
+    const colliders = [
+      { kind: "body", start: joints.neck, end: joints.hip, radius: bodyRadius },
+      { kind: "arm", start: joints.shoulder, end: joints.elbowL, radius: limbRadius },
+      { kind: "glove", start: joints.elbowL, end: joints.handL, radius: limbRadius + .8 * field.unit },
+      { kind: "arm", start: joints.shoulder, end: joints.elbowR, radius: limbRadius },
+      { kind: "arm", start: joints.elbowR, end: joints.handR, radius: limbRadius },
+      { kind: "leg", start: joints.hip, end: joints.kneeL, radius: limbRadius },
+      { kind: "leg", start: joints.kneeL, end: joints.footL, radius: limbRadius },
+      { kind: "leg", start: joints.hip, end: joints.kneeR, radius: limbRadius },
+      { kind: "leg", start: joints.kneeR, end: joints.footR, radius: limbRadius }
+    ];
+    const distance = Math.hypot(current.x - previous.x, current.y - previous.y);
+    const steps = clamp(Math.ceil(distance / Math.max(1.25, ball.r * .55)), 1, 80);
+    for (let step = 0; step <= steps; step++) {
+      const t = step / steps;
+      const point = { x: lerp(previous.x, current.x, t), y: lerp(previous.y, current.y, t) };
+      const headRadius = ball.r + 14 * scale + .55 * field.unit;
+      if ((point.x - joints.head.x) ** 2 + (point.y - joints.head.y) ** 2 <= headRadius ** 2) {
+        return { ...point, kind: "head", pitcherPose: rig };
+      }
+      const gloveRadius = ball.r + 10.2 * scale + .75 * field.unit;
+      if ((point.x - joints.handL.x) ** 2 + (point.y - joints.handL.y) ** 2 <= gloveRadius ** 2) {
+        return { ...point, kind: "glove", pitcherPose: rig };
+      }
+      for (const collider of colliders) {
+        if (pointSegmentDistanceSquared(point, collider.start, collider.end) <= collider.radius ** 2) {
+          return { ...point, kind: collider.kind, pitcherPose: rig };
+        }
+      }
+    }
+    return null;
+  }
+
+  function resolvePitcherOut(contact, previous) {
+    if (phase !== "flight" || ball.caught) return;
+    const field = scene();
+    const direction = Math.atan2(contact.y - previous.y, contact.x - previous.x);
+    ball.caught = true;
+    ball.caughtBy = "pitcher";
+    ball.pitcherContactKind = contact.kind;
+    ball.x = contact.x;
+    ball.z = Math.max(ball.r, field.ground - contact.y + ball.depth * .1);
+    const gloveCatch = contact.kind === "glove";
+    ball.vx = gloveCatch ? 0 : -72 * field.unit;
+    ball.vz = gloveCatch ? 0 : 82 * field.unit;
+    ball.depthV = 0;
+    ball.grounded = false;
+    pitcherReactionPose = contact.pitcherPose;
+    pitcherReactionKind = gloveCatch ? "glove" : "body";
+    pitchClock = -1;
+    addImpact(contact.x, contact.y, {
+      strengthIndex: 2,
+      trajectoryIndex: clamp(ball.trajectoryIndex ?? 2, 0, BATTED_TRAJECTORIES.length - 1),
+      directionAngle: direction,
+      depth: 0,
+      power: .55,
+      lifeScale: .72
+    });
+    burst(contact.x, contact.y, colors.cream, contact.kind === "glove" ? 7 : 10, .55);
+    shake = Math.max(shake, 4.5);
+    impactFreeze = .055;
+    impactFreezeMax = impactFreeze;
+    phase = "pitcher-out";
+    phaseTime = 0;
+    lastOutcome = "PITCHER OUT";
+  }
+
+  function pitcherReactionRig() {
+    const clip = pitcherReactionKind === "glove" ? "pitcherCatch" : "pitcherHit";
+    const time = clamp(phaseTime, 0, window.StickMotion.clips[clip].duration);
+    const target = window.StickMotion.resolvedPose(clip, time);
+    if (!pitcherReactionPose) return target;
+    const blend = smooth(time / .16);
+    return Object.fromEntries(Object.keys(target).map((joint) => [
+      joint,
+      [
+        lerp(pitcherReactionPose[joint]?.[0] ?? target[joint][0], target[joint][0], blend),
+        lerp(pitcherReactionPose[joint]?.[1] ?? target[joint][1], target[joint][1], blend)
+      ]
+    ]));
+  }
+
+  function pitcherReactionJointWorld(joint) {
+    const field = scene();
+    const rig = pitcherReactionRig();
+    const scale = field.actorScale * .96;
+    return {
+      x: field.pitcher.x - rig[joint][0] * scale,
+      y: field.ground + rig[joint][1] * scale
+    };
+  }
+
+  function updatePitcherOut(dt) {
+    if (!ball) return;
+    const field = scene();
+    if (pitcherReactionKind === "glove") {
+      const glove = pitcherReactionJointWorld(GLOVE_HAND);
+      ball.x = glove.x;
+      ball.y = field.ground;
+      ball.z = Math.max(ball.r, field.ground - glove.y);
+      return;
+    }
+    ball.spinPhase += ball.spinRate * dt;
+    ball.x += ball.vx * dt;
+    ball.z += ball.vz * dt;
+    ball.vz -= field.playHeight * 1.08 * dt;
+    if (ball.z <= ball.r) {
+      ball.z = ball.r;
+      if (!ball.grounded) {
+        ball.vz = Math.abs(ball.vz) * .18;
+        ball.vx *= .48;
+        ball.grounded = true;
+        burst(ball.x, field.ground - 2, colors.cream, 4, .28);
+      } else {
+        ball.vz = 0;
+        ball.vx *= Math.pow(.06, dt);
+      }
+    }
+    recordBallTrail(ball.x, field.ground, ball.z, ball.r, ball.grounded ? "ground" : "hit");
+  }
+
   function updateBattedBall(dt) {
     const field = scene();
+    const previousBallScreen = {
+      x: ball.x,
+      y: field.ground - ball.z + ball.depth * .1
+    };
+    const catchTarget = predictedPitcherCatch();
+    if (catchTarget) {
+      beginPitcherCatch(catchTarget);
+      return;
+    }
     const gravity = field.playHeight * 1.08 * (ball.gravityScale || 1);
     ball.spinPhase += ball.spinRate * dt;
     ball.x += ball.vx * dt;
@@ -1632,6 +1977,15 @@
       ball.spinRate *= Math.pow(.2, dt);
     }
     ball.predictedX = predictedLandingX();
+    const currentBallScreen = {
+      x: ball.x,
+      y: field.ground - ball.z + ball.depth * .1
+    };
+    const pitcherContact = pitcherCollision(previousBallScreen, currentBallScreen);
+    if (pitcherContact) {
+      resolvePitcherOut(pitcherContact, previousBallScreen);
+      return;
+    }
     recordBallTrail(
       ball.x,
       field.ground,
@@ -1783,10 +2137,19 @@
     lastOutcome = reason;
     gameOverReason.textContent = reason;
     finalScoreOutput.textContent = score.toLocaleString();
+    const finalTier = batTierForScore(score);
+    finalRankOutput.textContent = finalTier.name;
+    finalRankOutput.style.setProperty("--rank-color", `rgb(${finalTier.tip.join(",")})`);
     document.body.classList.add("result-open");
     gameOverPanel.hidden = false;
     window.desktopGame.setInteractive(true);
-    prepareRankingEntry();
+    if (pitcherCollisionPreview) {
+      rankingForm.hidden = true;
+      rankingList.hidden = true;
+      setRankingStatus("PITCHER COLLISION OK", "success");
+    } else {
+      prepareRankingEntry();
+    }
     setTimeout(() => restartButton.focus(), 50);
   }
 
@@ -1862,6 +2225,9 @@
     if (phase === "return") updateReturnCycle(dt);
     if (phase === "transfer") updatePitcherTransfer();
     if (phase === "flight") updateBattedBall(dt);
+    if (phase === "pitcher-catching") updatePitcherCatching(dt);
+    if (phase === "pitcher-out") updatePitcherOut(dt);
+    if (phase === "pitcher-out" && phaseTime >= (pitcherCollisionPreview ? 1.25 : .9)) endGame("PITCHER OUT");
     if (phase === "result" && phaseTime > 1.75) {
       phase = "waiting";
       phaseTime = 0;
@@ -1873,6 +2239,13 @@
   }
 
   function pitcherAnimation() {
+    if (phase === "pitcher-catching") {
+      return { clip: "pitcherFieldReady", time: 0 };
+    }
+    if ((phase === "pitcher-out" || phase === "gameover") && lastOutcome === "PITCHER OUT") {
+      const clip = pitcherReactionKind === "glove" ? "pitcherCatch" : "pitcherHit";
+      return { clip, time: stepTime(clamp(phaseTime, 0, window.StickMotion.clips[clip].duration)) };
+    }
     if (phase === "transfer") {
       return { clip: "pitcherTransfer", time: stepTime(clamp(phaseTime, 0, window.StickMotion.clips.pitcherTransfer.duration)) };
     }
@@ -1939,6 +2312,12 @@
       } else if (animation.clip === "pitcherRecover" || animation.clip === "pitcherFieldReady") {
         armZL = -.08;
         armZR = .28;
+      } else if (animation.clip === "pitcherCatch") {
+        armZL = .58;
+        armZR = -.12;
+      } else if (animation.clip === "pitcherHit") {
+        armZL = .08;
+        armZR = .34;
       }
       roleDepth = { armZL, armZR, depthCue: .64 };
     } else if (role === "catcher") {
@@ -1950,6 +2329,12 @@
         armZR = lerp(-.64, .64, smooth((progress - .34) / .34));
       }
       roleDepth = { armZL, armZR, depthCue: .64 };
+    }
+    if (role === "pitcher" && phase === "pitcher-catching" && pitcherReactionPose) {
+      overrides = pitcherCatchReachOverrides();
+    } else if (role === "pitcher" && phase === "pitcher-out" && pitcherReactionPose) {
+      overrides = pitcherReactionRig();
+      rigOptions = { ...(rigOptions || {}), lockArms: true };
     }
     const effectiveRigOptions = roleDepth || rigOptions ? { ...(roleDepth || {}), ...(rigOptions || {}) } : null;
     window.StickMotion.draw(ctx, {
@@ -2835,6 +3220,7 @@
   window.desktopGame.onReset(resetGame);
   window.desktopGame.onPreviewHitEffects(previewHitEffects);
   window.desktopGame.onPreviewHomeRunEffects(previewHomeRunEffects);
+  window.desktopGame.onPreviewPitcherCollision(previewPitcherCollision);
   window.desktopGame.onShowRanking(showStandaloneRanking);
   window.desktopGame.onBounds((bounds) => {
     const wasInitial = pitchNumber === 0 && phase === "waiting";
