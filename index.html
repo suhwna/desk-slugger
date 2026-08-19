@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Desk Slugger</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <canvas id="game" aria-label="바탕화면 야구 게임"></canvas>
+    <section id="gameOver" class="game-over" hidden>
+      <div class="game-over-card">
+        <span id="gameOverReason" class="game-over-reason">GAME OVER</span>
+        <span class="score-label">FINAL SCORE</span>
+        <output id="finalScore">0</output>
+        <p id="rankingStatus" class="ranking-status" aria-live="polite">랭킹 확인 중</p>
+        <form id="rankingForm" class="ranking-form" hidden>
+          <label class="sr-only" for="nickname">닉네임</label>
+          <input id="nickname" name="nickname" maxlength="12" autocomplete="nickname" placeholder="닉네임" required />
+          <button id="submitScore" type="submit">등록</button>
+        </form>
+        <ol id="rankingList" class="ranking-list" aria-label="랭킹 1위부터 10위" hidden></ol>
+        <button id="restartGame" class="restart-button" type="button">다시 하기</button>
+      </div>
+    </section>
+    <script src="motion.js"></script>
+    <script src="renderer.js"></script>
+  </body>
+</html>

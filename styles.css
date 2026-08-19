@@ -1,0 +1,50 @@
+* { box-sizing:border-box; }
+html,body { width:100%;height:100%;margin:0;overflow:hidden;background:transparent!important;pointer-events:none;user-select:none;font-family:"Segoe UI",system-ui,sans-serif; }
+canvas { position:fixed;inset:0;display:block;width:100%;height:100%;background:transparent; }
+.result-open canvas { opacity:0; }
+.game-over { position:fixed;inset:0;display:grid;place-items:center;padding:6px;pointer-events:auto; }
+.game-over[hidden],.ranking-form[hidden],.ranking-list[hidden] { display:none; }
+.game-over-card { width:min(280px,calc(100vw - 12px));padding:16px;border:1px solid #363638;border-radius:10px;color:#f4f4f4;background:#1d1d1f;text-align:center; }
+.game-over-reason { display:block;margin:0 0 7px;color:#9a9a9e;font-size:10px;font-weight:600;letter-spacing:.08em; }
+.score-label { display:none; }
+.game-over-card output { display:block;margin:0 0 10px;color:#fff;font-size:34px;font-weight:700;line-height:1;font-variant-numeric:tabular-nums; }
+.ranking-only output { display:none; }
+.ranking-status { min-height:16px;margin:0 0 10px;color:#b7b7ba;font-size:11px;font-weight:500;line-height:16px; }
+.ranking-status.success { color:#7fd58a; }
+.ranking-status.failed { color:#ef8b82; }
+.ranking-form { display:grid;grid-template-columns:1fr 50px;gap:6px;margin:0 0 10px; }
+.ranking-form input { width:100%;height:34px;min-width:0;padding:0 9px;border:1px solid #444447;outline:none;border-radius:5px;color:#fff;background:#29292b;font:500 12px/1 system-ui,sans-serif;user-select:text; }
+.ranking-form input::placeholder { color:#77777b; }
+.ranking-form input:focus { border-color:#77777b; }
+.ranking-form button,.restart-button { height:34px;border:0;border-radius:5px;font:600 11px/1 system-ui,sans-serif;cursor:pointer; }
+.ranking-form button { color:#171719;background:#f1f1f1; }
+.ranking-list { display:grid;gap:0;margin:0 0 10px;padding:0;list-style:none;text-align:left; }
+.ranking-list li { display:grid;grid-template-columns:24px minmax(0,1fr) auto;align-items:center;height:23px;padding:0 5px;border-bottom:1px solid #2e2e30;color:#b7b7ba;font-size:10px;font-weight:500;font-variant-numeric:tabular-nums; }
+.ranking-list .rank-number { color:#737378;font-size:9px; }
+.ranking-list .rank-name { overflow:hidden;text-overflow:ellipsis;white-space:nowrap; }
+.ranking-list .rank-score { color:#ededee;font-weight:600; }
+.ranking-list li.is-me { color:#98dda0;background:#26362a; }
+.ranking-list li.is-me .rank-number,.ranking-list li.is-me .rank-score { color:#98dda0; }
+.ranking-list .ranking-empty { display:block;height:auto;padding:14px 5px;color:#77777b;text-align:center; }
+.restart-button { width:100%;color:#bdbdc0;background:#29292b; }
+.ranking-form button:hover { background:#fff; }
+.restart-button:hover { color:#fff;background:#303033; }
+.ranking-form button:disabled,.ranking-form input:disabled { opacity:.45;cursor:default; }
+.sr-only { position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0; }
+
+@media (prefers-color-scheme:light) {
+  .game-over-card { color:#171719;border-color:#d4d4d6;background:#f7f7f7; }
+  .game-over-reason { color:#727276; }
+  .game-over-card output { color:#111113; }
+  .ranking-status { color:#626266; }
+  .ranking-form input { color:#171719;border-color:#c9c9cc;background:#fff; }
+  .ranking-form input::placeholder { color:#99999d; }
+  .ranking-form button { color:#fff;background:#1d1d1f; }
+  .ranking-list li { border-bottom-color:#e7e7e8;color:#5f5f63; }
+  .ranking-list .rank-number { color:#99999d; }
+  .ranking-list .rank-score { color:#1d1d1f; }
+  .ranking-list li.is-me { color:#2c7134;background:#e7f2e8; }
+  .ranking-list li.is-me .rank-number,.ranking-list li.is-me .rank-score { color:#2c7134; }
+  .restart-button { color:#5f5f63;background:#e9e9ea; }
+  .restart-button:hover { color:#222;background:#dfdfe1; }
+}

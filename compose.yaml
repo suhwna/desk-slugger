@@ -1,0 +1,30 @@
+services:
+  ranking-server:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: desk-slugger-ranking
+    restart: unless-stopped
+    environment:
+      PORT: "47831"
+      DATA_DIRECTORY: /app/ranking-data
+      UPDATE_DIRECTORY: /app/updates
+      LEAGUE_KEY: ${LEAGUE_KEY:?Set LEAGUE_KEY in .env}
+    ports:
+      - "47831:47831"
+    volumes:
+      - ./ranking-data:/app/ranking-data
+      - ./updates:/app/updates:ro
+    healthcheck:
+      test:
+        - CMD
+        - node
+        - -e
+        - >-
+          fetch('http://127.0.0.1:47831/health', {headers:
+          {'X-Desk-Slugger-League': process.env.LEAGUE_KEY}}).then(r => {
+          if (!r.ok) process.exit(1) }).catch(() => process.exit(1))
+      interval: 15s
+      timeout: 3s
+      retries: 3
+      start_period: 5s

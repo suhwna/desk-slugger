@@ -1,0 +1,47 @@
+{
+  "name": "desk-slugger",
+  "version": "0.7.34",
+  "description": "A transparent desktop-mate baseball game controlled by mouse movement.",
+  "main": "main.js",
+  "author": "Desk Slugger",
+  "license": "MIT",
+  "scripts": {
+    "start": "electron .",
+    "ranking-server": "node ranking-server.js",
+    "dist": "electron-builder --win portable && node publish-update.js",
+    "publish-update": "node publish-update.js"
+  },
+  "devDependencies": {
+    "electron": "^37.2.6",
+    "electron-builder": "^26.0.12"
+  },
+  "build": {
+    "appId": "com.deskslugger.game",
+    "productName": "Desk Slugger",
+    "icon": "icon.ico",
+    "asar": true,
+    "files": [
+      "main.js",
+      "preload.js",
+      "index.html",
+      "styles.css",
+      "motion.js",
+      "renderer.js",
+      "icon.png",
+      "icon.ico",
+      "icon-tray.png",
+      "ranking-config.json",
+      "changelog.json",
+      "package.json"
+    ],
+    "win": {
+      "icon": "icon.ico",
+      "target": "portable",
+      "artifactName": "Desk-Slugger-${version}.exe"
+    }
+  },
+  "allowScripts": {
+    "electron@37.10.3": true,
+    "electron-winstaller@5.4.0": true
+  }
+}

@@ -1,0 +1,8 @@
+dist
+node_modules
+.git
+*.log
+ranking-data
+updates
+.env
+ranking-config.json
