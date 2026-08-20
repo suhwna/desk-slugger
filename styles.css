@@ -3,14 +3,17 @@ html,body { width:100%;height:100%;margin:0;overflow:hidden;background:transpare
 canvas { position:fixed;inset:0;display:block;width:100%;height:100%;background:transparent; }
 .result-open canvas { opacity:0; }
 .game-over { position:fixed;inset:0;display:grid;place-items:center;padding:6px;pointer-events:auto; }
-.game-over[hidden],.ranking-form[hidden],.ranking-list[hidden] { display:none; }
+.game-over[hidden],.ranking-form[hidden],.ranking-list[hidden],.bat-unlock-notice[hidden] { display:none; }
 .game-over-card { width:min(280px,calc(100vw - 12px));padding:16px;border:1px solid #363638;border-radius:10px;color:#f4f4f4;background:#1d1d1f;text-align:center; }
 .game-over-reason { display:block;margin:0 0 7px;color:#9a9a9e;font-size:10px;font-weight:600;letter-spacing:.08em; }
 .score-label { display:none; }
 .game-over-card output { display:block;margin:0 0 5px;color:#fff;font-size:34px;font-weight:700;line-height:1;font-variant-numeric:tabular-nums; }
 .final-rank { display:block;margin:0 0 9px;color:var(--rank-color,#aaa);font-size:10px;font-weight:800;line-height:14px;letter-spacing:.12em; }
+.personal-best { display:block;margin:-4px 0 9px;color:#8f8f94;font-size:9px;font-weight:600;line-height:13px;letter-spacing:.08em;font-variant-numeric:tabular-nums; }
+.bat-unlock-notice { display:block;margin:-3px 0 9px;color:var(--unlock-color,#f1cf57);font-size:10px;font-weight:800;line-height:14px;letter-spacing:.04em; }
 .ranking-only output { display:none; }
 .ranking-only .final-rank { display:none; }
+.ranking-only .personal-best { margin:0 0 10px; }
 .ranking-status { min-height:16px;margin:0 0 10px;color:#b7b7ba;font-size:11px;font-weight:500;line-height:16px; }
 .ranking-status.success { color:#7fd58a; }
 .ranking-status.failed { color:#ef8b82; }
@@ -41,6 +44,7 @@ canvas { position:fixed;inset:0;display:block;width:100%;height:100%;background:
   .game-over-card { color:#171719;border-color:#d4d4d6;background:#f7f7f7; }
   .game-over-reason { color:#727276; }
   .game-over-card output { color:#111113; }
+  .personal-best { color:#77777b; }
   .ranking-status { color:#626266; }
   .ranking-form input { color:#171719;border-color:#c9c9cc;background:#fff; }
   .ranking-form input::placeholder { color:#99999d; }

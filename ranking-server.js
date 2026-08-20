@@ -3,6 +3,7 @@
 const http = require("node:http");
 const path = require("node:path");
 const fs = require("node:fs");
+const crypto = require("node:crypto");
 const { DatabaseSync } = require("node:sqlite");
 let config = {};
 try {
@@ -20,6 +21,9 @@ const updateDirectory = process.env.UPDATE_DIRECTORY || path.join(__dirname, "up
 fs.mkdirSync(dataDirectory, { recursive: true });
 const database = new DatabaseSync(path.join(dataDirectory, "desk-slugger.db"));
 const recentRequests = new Map();
+const gameSessions = new Map();
+const SESSION_TTL_MS = 2 * 60 * 60 * 1000;
+const COMPLETED_SESSION_TTL_MS = 10 * 60 * 1000;
 
 database.exec(`
   CREATE TABLE IF NOT EXISTS scores (
@@ -41,9 +45,27 @@ function json(response, status, payload) {
   response.writeHead(status, {
     "Content-Type": "application/json; charset=utf-8",
     "Content-Length": Buffer.byteLength(body),
-    "Cache-Control": "no-store"
+    "Cache-Control": "no-store",
+    "X-Content-Type-Options": "nosniff",
+    "Referrer-Policy": "no-referrer",
+    "Content-Security-Policy": "default-src 'none'"
   });
   response.end(body);
+}
+
+function validLeagueKey(request) {
+  const supplied = Buffer.from(String(request.headers["x-desk-slugger-league"] || ""));
+  const expected = Buffer.from(String(LEAGUE_KEY));
+  return supplied.length === expected.length && crypto.timingSafeEqual(supplied, expected);
+}
+
+function cleanupRequestState(now = Date.now()) {
+  for (const [ip, at] of recentRequests) if (now - at > 60000) recentRequests.delete(ip);
+  for (const [token, session] of gameSessions) {
+    const ttl = session.completed ? COMPLETED_SESSION_TTL_MS : SESSION_TTL_MS;
+    if (now - (session.completedAt || session.startedAt) > ttl) gameSessions.delete(token);
+  }
+  while (gameSessions.size > 512) gameSessions.delete(gameSessions.keys().next().value);
 }
 
 function body(request) {
@@ -72,7 +94,8 @@ function updateInfo() {
 
 const server = http.createServer(async (request, response) => {
   const ip = request.socket.remoteAddress || "unknown";
-  if (request.headers["x-desk-slugger-league"] !== LEAGUE_KEY) return json(response, 401, { error: "invalid league" });
+  cleanupRequestState();
+  if (!validLeagueKey(request)) return json(response, 401, { error: "invalid league" });
 
   if (request.method === "GET" && request.url === "/health") return json(response, 200, { ok: true });
   if (request.method === "GET" && request.url === "/update") {
@@ -90,7 +113,9 @@ const server = http.createServer(async (request, response) => {
         "Content-Type": "application/vnd.microsoft.portable-executable",
         "Content-Length": stat.size,
         "Content-Disposition": `attachment; filename=Desk-Slugger-${manifest.version}.exe`,
-        "Cache-Control": "no-store"
+        "Cache-Control": "no-store",
+        "X-Content-Type-Options": "nosniff",
+        "Referrer-Policy": "no-referrer"
       });
       fs.createReadStream(executablePath).pipe(response);
       return;
@@ -108,20 +133,53 @@ const server = http.createServer(async (request, response) => {
     const rank = Number(prospectiveRank.get(score).rank);
     return json(response, 200, { qualified: rank <= 10, rank });
   }
+  if (request.method === "POST" && request.url === "/session") {
+    const token = crypto.randomBytes(24).toString("hex");
+    gameSessions.set(token, {
+      ip,
+      startedAt: Date.now(),
+      version: String(request.headers["x-desk-slugger-version"] || "unknown").slice(0, 24),
+      completed: false
+    });
+    return json(response, 201, { ok: true, sessionToken: token, expiresIn: SESSION_TTL_MS / 1000 });
+  }
   if (request.method === "POST" && request.url === "/scores") {
-    const now = Date.now();
-    if (now - (recentRequests.get(ip) || 0) < 2000) return json(response, 429, { error: "too fast" });
-    recentRequests.set(ip, now);
     try {
       const payload = await body(request);
       const nickname = String(payload.nickname || "").trim();
       const score = Number(payload.score);
+      const sessionToken = String(payload.sessionToken || "");
       if (!/^[\p{L}\p{N}_ -]{1,12}$/u.test(nickname)) return json(response, 400, { error: "invalid nickname" });
       if (!Number.isInteger(score) || score < 0 || score > 1000000 || score % 100 !== 0) return json(response, 400, { error: "invalid score" });
+      if (!/^[a-f0-9]{48}$/i.test(sessionToken)) return json(response, 401, { error: "invalid game session" });
+      const session = gameSessions.get(sessionToken);
+      if (!session || session.ip !== ip) return json(response, 401, { error: "expired game session" });
+      if (session.completed) {
+        if (session.nickname !== nickname || session.score !== score) return json(response, 409, { error: "game session already used" });
+        return json(response, session.result.ok ? 200 : 409, session.result);
+      }
+      const now = Date.now();
+      const elapsedMs = now - session.startedAt;
+      const maxPlausibleScore = Math.max(3000, (Math.floor(elapsedMs / 1500) + 1) * 3000);
+      if (elapsedMs < 3000 || score > maxPlausibleScore) return json(response, 422, { error: "implausible game result" });
+      if (now - (recentRequests.get(ip) || 0) < 2000) return json(response, 429, { error: "too fast" });
+      recentRequests.set(ip, now);
       const rank = Number(prospectiveRank.get(score).rank);
-      if (rank > 10) return json(response, 409, { error: "not top 10", qualified: false, rank });
+      if (rank > 10) {
+        session.completed = true;
+        session.completedAt = now;
+        session.nickname = nickname;
+        session.score = score;
+        session.result = { ok: false, qualified: false, rank };
+        return json(response, 409, { error: "not top 10", ...session.result });
+      }
       const inserted = insertScore.run(nickname, score, ip);
-      return json(response, 201, { ok: true, qualified: true, rank, entryId: Number(inserted.lastInsertRowid), ranking: topScores.all(10) });
+      session.completed = true;
+      session.completedAt = now;
+      session.nickname = nickname;
+      session.score = score;
+      session.result = { ok: true, qualified: true, rank, entryId: Number(inserted.lastInsertRowid), ranking: topScores.all(10) };
+      return json(response, 201, session.result);
     } catch {
       return json(response, 400, { error: "invalid request" });
     }

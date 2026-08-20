@@ -9,10 +9,12 @@ const { pipeline } = require("node:stream/promises");
 const path = require("path");
 const rankingConfig = require("./ranking-config.json");
 const bundledChangelog = require("./changelog.json");
+const GameRules = require("./game-rules.js");
 
 const APP_ID = "com.deskslugger.game";
 const APP_ICON = path.join(__dirname, "icon.ico");
 const TRAY_ICON = path.join(__dirname, "icon-tray.png");
+const UPDATE_DOWNLOAD_TIMEOUT_MS = 180000;
 
 app.setName("Desk Slugger");
 app.setAppUserModelId(APP_ID);
@@ -24,6 +26,7 @@ let paused = false;
 let quitting = false;
 let resultInteractive = false;
 let updateBusy = false;
+let challengerBatPreview = false;
 
 function primaryDesktopMetrics() {
   const primary = screen.getPrimaryDisplay();
@@ -99,6 +102,7 @@ function createOverlay() {
   overlay.webContents.on("did-finish-load", () => {
     overlay.webContents.send("desktop-bounds", metrics.payload);
     overlay.webContents.send("pause-state", paused);
+    overlay.webContents.send("challenger-bat-preview", challengerBatPreview);
   });
 
   cursorTimer = setInterval(() => {
@@ -124,18 +128,25 @@ function rebuildTrayMenu() {
     { label: "랭킹", click: showRanking },
     { label: "버전", click: showVersion },
     { label: updateBusy ? "업데이트 확인 중…" : "업데이트", enabled: !updateBusy, click: () => checkForUpdate() },
+    {
+      label: "챌린저 배트 체험",
+      type: "checkbox",
+      checked: challengerBatPreview,
+      click: (menuItem) => {
+        challengerBatPreview = Boolean(menuItem.checked);
+        if (overlay && !overlay.isDestroyed()) {
+          overlay.webContents.send("challenger-bat-preview", challengerBatPreview);
+        }
+      }
+    },
+    { label: "점수 이펙트 미리보기", click: previewHomeRunEffects },
     { type: "separator" },
     { label: "종료", click: quitGame }
   ]));
 }
 
 function compareVersions(left, right) {
-  const a = String(left).split(".").map((part) => Number(part) || 0);
-  const b = String(right).split(".").map((part) => Number(part) || 0);
-  for (let index = 0; index < Math.max(a.length, b.length); index++) {
-    if ((a[index] || 0) !== (b[index] || 0)) return (a[index] || 0) - (b[index] || 0);
-  }
-  return 0;
+  return GameRules.compareVersions(left, right);
 }
 
 function normalizedChangelog(value) {
@@ -187,20 +198,30 @@ async function fileSha256(filePath) {
 }
 
 async function downloadUpdate(manifest) {
-  const response = await fetch(`${rankingConfig.serverUrl}${manifest.downloadPath || "/update/download"}`, {
-    headers: { "X-Desk-Slugger-League": rankingConfig.leagueKey }
-  });
-  if (!response.ok || !response.body) throw new Error(`업데이트 다운로드 실패 (${response.status})`);
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), UPDATE_DOWNLOAD_TIMEOUT_MS);
   const temporaryPath = path.join(app.getPath("temp"), `Desk-Slugger-${manifest.version}-${Date.now()}.exe`);
   try {
-    await pipeline(Readable.fromWeb(response.body), fs.createWriteStream(temporaryPath, { flags: "wx" }));
+    const response = await fetch(`${rankingConfig.serverUrl}${manifest.downloadPath || "/update/download"}`, {
+      signal: controller.signal,
+      headers: { "X-Desk-Slugger-League": rankingConfig.leagueKey }
+    });
+    if (!response.ok || !response.body) throw new Error(`업데이트 다운로드 실패 (${response.status})`);
+    await pipeline(
+      Readable.fromWeb(response.body),
+      fs.createWriteStream(temporaryPath, { flags: "wx" }),
+      { signal: controller.signal }
+    );
     const stat = await fs.promises.stat(temporaryPath);
     if (Number(manifest.size) > 0 && stat.size !== Number(manifest.size)) throw new Error("다운로드 크기가 일치하지 않습니다.");
     if ((await fileSha256(temporaryPath)).toLowerCase() !== manifest.sha256.toLowerCase()) throw new Error("업데이트 파일 검증에 실패했습니다.");
     return temporaryPath;
   } catch (error) {
     await fs.promises.rm(temporaryPath, { force: true }).catch(() => {});
+    if (error?.name === "AbortError") throw new Error("업데이트 다운로드 제한 시간(3분)을 초과했습니다.");
     throw error;
+  } finally {
+    clearTimeout(timeout);
   }
 }
 
@@ -208,23 +229,76 @@ async function installDownloadedUpdate(downloadedPath) {
   const targetPath = process.env.PORTABLE_EXECUTABLE_FILE;
   if (!targetPath || !fs.existsSync(targetPath)) throw new Error("포터블 EXE에서만 자동 업데이트할 수 있습니다.");
   const helperPath = path.join(app.getPath("temp"), `desk-slugger-updater-${Date.now()}.ps1`);
-  const helper = `param([string]$TargetPath,[string]$UpdatePath,[int]$GameProcessId)\n`
+  const resultPath = path.join(app.getPath("userData"), "update-result.json");
+  await fs.promises.mkdir(path.dirname(resultPath), { recursive: true });
+  await fs.promises.rm(resultPath, { force: true }).catch(() => {});
+  const helper = `param([string]$TargetPath,[string]$UpdatePath,[int]$GameProcessId,[string]$ResultPath)\n`
     + `$ErrorActionPreference = 'Stop'\n`
     + `Wait-Process -Id $GameProcessId -ErrorAction SilentlyContinue\n`
-    + `$installed = $false\n`
-    + `for ($attempt = 0; $attempt -lt 240 -and -not $installed; $attempt++) {\n`
-    + `  try { Copy-Item -LiteralPath $UpdatePath -Destination $TargetPath -Force; $installed = $true } catch { Start-Sleep -Milliseconds 250 }\n`
-    + `}\n`
-    + `if ($installed) { Start-Process -FilePath $TargetPath -WorkingDirectory (Split-Path -LiteralPath $TargetPath) -WindowStyle Hidden }\n`
-    + `Remove-Item -LiteralPath $UpdatePath -Force -ErrorAction SilentlyContinue\n`
-    + `Remove-Item -LiteralPath $PSCommandPath -Force -ErrorAction SilentlyContinue\n`;
+    + `$BackupPath = "$TargetPath.backup"\n`
+    + `$StagePath = "$TargetPath.update"\n`
+    + `try {\n`
+    + `  Remove-Item -LiteralPath $StagePath -Force -ErrorAction SilentlyContinue\n`
+    + `  Copy-Item -LiteralPath $UpdatePath -Destination $StagePath -Force\n`
+    + `  Remove-Item -LiteralPath $BackupPath -Force -ErrorAction SilentlyContinue\n`
+    + `  Move-Item -LiteralPath $TargetPath -Destination $BackupPath -Force\n`
+    + `  try {\n`
+    + `    Move-Item -LiteralPath $StagePath -Destination $TargetPath -Force\n`
+    + `    $process = Start-Process -FilePath $TargetPath -WorkingDirectory (Split-Path -LiteralPath $TargetPath) -WindowStyle Hidden -PassThru\n`
+    + `    Start-Sleep -Milliseconds 1200\n`
+    + `    if ($process.HasExited -and $process.ExitCode -ne 0) { throw "새 버전 실행 실패 (종료 코드 $($process.ExitCode))" }\n`
+    + `    Remove-Item -LiteralPath $BackupPath -Force -ErrorAction SilentlyContinue\n`
+    + `    Remove-Item -LiteralPath $ResultPath -Force -ErrorAction SilentlyContinue\n`
+    + `  } catch {\n`
+    + `    Remove-Item -LiteralPath $TargetPath -Force -ErrorAction SilentlyContinue\n`
+    + `    if (Test-Path -LiteralPath $BackupPath) { Move-Item -LiteralPath $BackupPath -Destination $TargetPath -Force }\n`
+    + `    throw\n`
+    + `  }\n`
+    + `} catch {\n`
+    + `  if (-not (Test-Path -LiteralPath $TargetPath) -and (Test-Path -LiteralPath $BackupPath)) { Move-Item -LiteralPath $BackupPath -Destination $TargetPath -Force }\n`
+    + `  @{ failed = $true; message = $_.Exception.Message; at = (Get-Date).ToString('o') } | ConvertTo-Json | Set-Content -LiteralPath $ResultPath -Encoding UTF8\n`
+    + `  if (Test-Path -LiteralPath $TargetPath) { Start-Process -FilePath $TargetPath -WorkingDirectory (Split-Path -LiteralPath $TargetPath) -WindowStyle Hidden }\n`
+    + `} finally {\n`
+    + `  Remove-Item -LiteralPath $UpdatePath -Force -ErrorAction SilentlyContinue\n`
+    + `  Remove-Item -LiteralPath $StagePath -Force -ErrorAction SilentlyContinue\n`
+    + `  Remove-Item -LiteralPath $PSCommandPath -Force -ErrorAction SilentlyContinue\n`
+    + `}\n`;
   await fs.promises.writeFile(helperPath, helper, "utf8");
-  const child = spawn("powershell.exe", [
-    "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", helperPath,
-    targetPath, downloadedPath, String(process.pid)
-  ], { detached: true, stdio: "ignore", windowsHide: true });
-  child.unref();
+  try {
+    await new Promise((resolve, reject) => {
+      const child = spawn("powershell.exe", [
+        "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", helperPath,
+        targetPath, downloadedPath, String(process.pid), resultPath
+      ], { detached: true, stdio: "ignore", windowsHide: true });
+      child.once("spawn", () => { child.unref(); resolve(); });
+      child.once("error", reject);
+    });
+  } catch (error) {
+    await fs.promises.rm(helperPath, { force: true }).catch(() => {});
+    throw error;
+  }
   quitGame();
+}
+
+async function showPendingUpdateFailure() {
+  const resultPath = path.join(app.getPath("userData"), "update-result.json");
+  try {
+    const raw = (await fs.promises.readFile(resultPath, "utf8")).replace(/^\uFEFF/, "");
+    await fs.promises.rm(resultPath, { force: true });
+    const result = JSON.parse(raw);
+    if (!result?.failed) return;
+    await dialog.showMessageBox({
+      type: "warning",
+      title: "업데이트 복구 완료",
+      message: "새 버전 설치에 실패해 기존 버전으로 복구했습니다.",
+      detail: String(result.message || "알 수 없는 설치 오류").slice(0, 500),
+      buttons: ["확인"],
+      noLink: true,
+      icon: APP_ICON
+    });
+  } catch (error) {
+    if (error?.code !== "ENOENT") await fs.promises.rm(resultPath, { force: true }).catch(() => {});
+  }
 }
 
 async function checkForUpdate({ silentWhenCurrent = false, silentErrors = false } = {}) {
@@ -342,7 +416,10 @@ if (!gotLock) app.quit();
 app.whenReady().then(() => {
   createOverlay();
   createTray();
-  setTimeout(() => checkForUpdate({ silentWhenCurrent: true, silentErrors: true }), 2500);
+  setTimeout(async () => {
+    await showPendingUpdateFailure();
+    setTimeout(() => checkForUpdate({ silentWhenCurrent: true, silentErrors: true }), 1800);
+  }, 700);
   screen.on("display-added", fitToDisplays);
   screen.on("display-removed", fitToDisplays);
   screen.on("display-metrics-changed", fitToDisplays);
@@ -361,6 +438,7 @@ app.on("will-quit", () => {
 
 ipcMain.on("renderer-ready", () => fitToDisplays());
 ipcMain.handle("ranking-list", async () => rankingRequest("/ranking"));
+ipcMain.handle("ranking-session", async () => rankingRequest("/session", { method: "POST", body: "{}" }));
 ipcMain.handle("ranking-qualify", async (_event, rawScore) => {
   const score = Number(rawScore);
   if (!Number.isInteger(score) || score < 0 || score > 1000000 || score % 100 !== 0) throw new Error("유효하지 않은 점수입니다.");
@@ -369,10 +447,12 @@ ipcMain.handle("ranking-qualify", async (_event, rawScore) => {
 ipcMain.handle("ranking-submit", async (_event, payload) => {
   const nickname = String(payload?.nickname || "").trim();
   const score = Number(payload?.score);
+  const sessionToken = String(payload?.sessionToken || "");
   if (!/^[\p{L}\p{N}_ -]{1,12}$/u.test(nickname)) throw new Error("닉네임은 1~12자로 입력해 주세요.");
   if (!Number.isInteger(score) || score < 0 || score > 1000000 || score % 100 !== 0) throw new Error("유효하지 않은 점수입니다.");
+  if (!/^[a-f0-9]{48}$/i.test(sessionToken)) throw new Error("게임 인증 세션이 없습니다. 다시 플레이해 주세요.");
   try {
-    return await rankingRequest("/scores", { method: "POST", body: JSON.stringify({ nickname, score }) });
+    return await rankingRequest("/scores", { method: "POST", body: JSON.stringify({ nickname, score, sessionToken }) });
   } catch (error) {
     if (error?.payload?.rank) return { ok: false, qualified: false, rank: error.payload.rank };
     throw error;
@@ -409,6 +489,7 @@ async function rankingRequest(endpoint, init = {}) {
       headers: {
         "Content-Type": "application/json",
         "X-Desk-Slugger-League": rankingConfig.leagueKey,
+        "X-Desk-Slugger-Version": app.getVersion(),
         ...(init.headers || {})
       }
     });

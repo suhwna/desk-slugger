@@ -3,6 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'" />
     <title>Desk Slugger</title>
     <link rel="stylesheet" href="styles.css" />
   </head>
@@ -14,6 +15,8 @@
         <span class="score-label">FINAL SCORE</span>
         <output id="finalScore">0</output>
         <span id="finalRank" class="final-rank">IRON</span>
+        <span id="personalBest" class="personal-best">BEST 0</span>
+        <span id="batUnlockNotice" class="bat-unlock-notice" aria-live="polite" hidden></span>
         <p id="rankingStatus" class="ranking-status" aria-live="polite">랭킹 확인 중</p>
         <form id="rankingForm" class="ranking-form" hidden>
           <label class="sr-only" for="nickname">닉네임</label>
@@ -24,6 +27,7 @@
         <button id="restartGame" class="restart-button" type="button">다시 하기</button>
       </div>
     </section>
+    <script src="game-rules.js"></script>
     <script src="motion.js"></script>
     <script src="renderer.js"></script>
   </body>

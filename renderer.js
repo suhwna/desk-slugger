@@ -8,6 +8,8 @@
   const scoreLabel = document.querySelector(".score-label");
   const finalScoreOutput = document.querySelector("#finalScore");
   const finalRankOutput = document.querySelector("#finalRank");
+  const personalBestOutput = document.querySelector("#personalBest");
+  const batUnlockNotice = document.querySelector("#batUnlockNotice");
   const rankingStatus = document.querySelector("#rankingStatus");
   const rankingForm = document.querySelector("#rankingForm");
   const rankingList = document.querySelector("#rankingList");
@@ -19,6 +21,8 @@
     cream: "#f4f0e4", red: "#ef5144", yellow: "#f1cf57",
     blue: "#55c3d4", green: "#71b36b"
   };
+  const GameRules = window.DeskSluggerRules;
+  if (!GameRules) throw new Error("Desk Slugger game rules failed to load.");
   const ANIMATION_FPS = 12;
   const CATCH_RECEIVE_END = .42;
   const CATCH_RELEASE_AT = 1.04;
@@ -53,16 +57,16 @@
     timingMemory: .075
   };
   const BAT_TIERS = [
-    { min: 0, name: "IRON", accuracy: 0, power: 0, rim: [35, 38, 42], handle: [72, 76, 82], middle: [116, 122, 130], tip: [157, 164, 173], shine: [211, 216, 222] },
-    { min: 500, name: "BRONZE", accuracy: .005, power: .006, rim: [62, 31, 18], handle: [111, 56, 31], middle: [181, 99, 52], tip: [222, 140, 79], shine: [255, 197, 128] },
-    { min: 1000, name: "SILVER", accuracy: .01, power: .012, rim: [57, 65, 73], handle: [103, 113, 123], middle: [169, 180, 190], tip: [219, 227, 234], shine: [255, 255, 255] },
-    { min: 2000, name: "GOLD", accuracy: .015, power: .018, rim: [82, 54, 6], handle: [143, 91, 12], middle: [225, 167, 30], tip: [255, 220, 79], shine: [255, 246, 175] },
-    { min: 3000, name: "PLATINUM", accuracy: .02, power: .024, rim: [52, 74, 82], handle: [99, 133, 143], middle: [166, 204, 210], tip: [223, 247, 245], shine: [255, 255, 255] },
-    { min: 4000, name: "EMERALD", accuracy: .025, power: .03, rim: [10, 66, 44], handle: [17, 105, 68], middle: [30, 178, 113], tip: [83, 235, 159], shine: [190, 255, 222] },
-    { min: 5000, name: "DIAMOND", accuracy: .03, power: .036, rim: [35, 75, 101], handle: [66, 127, 160], middle: [111, 205, 233], tip: [205, 249, 255], shine: [255, 255, 255] },
-    { min: 7000, name: "MASTER", accuracy: .035, power: .042, rim: [60, 26, 104], handle: [101, 46, 157], middle: [167, 83, 225], tip: [222, 148, 255], shine: [249, 221, 255] },
-    { min: 10000, name: "GRANDMASTER", accuracy: .04, power: .048, rim: [87, 11, 23], handle: [139, 20, 39], middle: [222, 49, 67], tip: [255, 125, 67], shine: [255, 224, 116] },
-    { min: 15000, name: "CHALLENGER", accuracy: .045, power: .054, rim: [30, 34, 76], handle: [69, 73, 177], middle: [49, 210, 213], tip: [244, 99, 222], shine: [255, 255, 255] }
+    { ...GameRules.BAT_TIER_UNLOCKS[0], rim: [35, 38, 42], handle: [72, 76, 82], middle: [116, 122, 130], tip: [157, 164, 173], shine: [211, 216, 222] },
+    { ...GameRules.BAT_TIER_UNLOCKS[1], rim: [62, 31, 18], handle: [111, 56, 31], middle: [181, 99, 52], tip: [222, 140, 79], shine: [255, 197, 128] },
+    { ...GameRules.BAT_TIER_UNLOCKS[2], rim: [57, 65, 73], handle: [103, 113, 123], middle: [169, 180, 190], tip: [219, 227, 234], shine: [255, 255, 255] },
+    { ...GameRules.BAT_TIER_UNLOCKS[3], rim: [82, 54, 6], handle: [143, 91, 12], middle: [225, 167, 30], tip: [255, 220, 79], shine: [255, 246, 175] },
+    { ...GameRules.BAT_TIER_UNLOCKS[4], rim: [52, 74, 82], handle: [99, 133, 143], middle: [166, 204, 210], tip: [223, 247, 245], shine: [255, 255, 255] },
+    { ...GameRules.BAT_TIER_UNLOCKS[5], rim: [10, 66, 44], handle: [17, 105, 68], middle: [30, 178, 113], tip: [83, 235, 159], shine: [190, 255, 222] },
+    { ...GameRules.BAT_TIER_UNLOCKS[6], rim: [35, 75, 101], handle: [66, 127, 160], middle: [111, 205, 233], tip: [205, 249, 255], shine: [255, 255, 255] },
+    { ...GameRules.BAT_TIER_UNLOCKS[7], prestige: "arcane", rim: [43, 18, 78], handle: [82, 37, 137], middle: [155, 68, 224], tip: [225, 148, 255], shine: [255, 235, 255] },
+    { ...GameRules.BAT_TIER_UNLOCKS[8], prestige: "infernal", rim: [42, 5, 12], handle: [92, 10, 25], middle: [205, 35, 52], tip: [255, 107, 45], shine: [255, 225, 106] },
+    { ...GameRules.BAT_TIER_UNLOCKS[9], prestige: "celestial", rim: [8, 18, 52], handle: [26, 55, 113], middle: [35, 181, 207], tip: [249, 199, 55], shine: [255, 252, 218] }
   ];
   const HIT_STRENGTHS = [
     { key: "MISHIT", label: "빗맞음", max: .41, lines: 3, particles: 2, rings: 1, scale: .58, freeze: .4, shake: .8, color: colors.cream, glow: .08 },
@@ -82,15 +86,7 @@
     { key: "HIGH_FLY", label: "높은 뜬공", max: 52, spread: .36, ringSquash: .52, curve: -.11, gravity: 28, accent: colors.blue },
     { key: "MOONSHOT", label: "문샷", max: 65, spread: .45, ringSquash: .62, curve: -.16, gravity: 8, accent: "#ffffff" }
   ];
-  const HOME_RUN_REWARDS = [
-    { min: 0, points: 200, title: "LOW EXIT", tier: 0, style: "chip", color: colors.green, rgb: "113,179,107" },
-    { min: .12, points: 300, title: "LOW DRIVE", tier: 1, style: "dust", color: "#e0c49b", rgb: "224,196,155" },
-    { min: .22, points: 500, title: "RISING DRIVE", tier: 2, style: "slice", color: "#ffad5c", rgb: "255,173,92" },
-    { min: .32, points: 700, title: "HIGH DRIVE", tier: 3, style: "pulse", color: colors.yellow, rgb: "241,207,87" },
-    { min: .42, points: 1000, title: "SKY SHOT", tier: 4, style: "spiral", color: colors.blue, rgb: "85,195,212" },
-    { min: .52, points: 1200, title: "UPPER DECK", tier: 5, style: "prism", color: "#bda2ff", rgb: "189,162,255" },
-    { min: .64, points: 1500, title: "ZENITH", tier: 6, style: "nova", color: "#ffffff", rgb: "255,255,255" }
-  ];
+  const HOME_RUN_REWARDS = GameRules.HOME_RUN_REWARDS;
 
   let width = innerWidth;
   let height = innerHeight;
@@ -108,7 +104,10 @@
   let phaseTime = 0;
   let paused = false;
   let score = 0;
+  let difficultyScore = 0;
   let personalBest = Math.max(0, Number.parseInt(localStorage.getItem("desk-slugger-personal-best") || "0", 10) || 0);
+  let runBatTier = null;
+  let challengerBatPreview = false;
   let strikes = 0;
   let pitchNumber = 0;
   let nextPitchDelay = 1.25;
@@ -138,6 +137,8 @@
   let batContactTrail = [];
   let swingConsumed = false;
   let rankingRequestToken = 0;
+  let rankingSessionGeneration = 0;
+  let rankingSessionToken = null;
   let scoreSubmitted = false;
   let rankingOnlyOpen = false;
   let rankingPreviousPaused = false;
@@ -171,8 +172,8 @@
   };
 
   function activeBatTier() {
-    const record = Math.max(personalBest, score);
-    return batTierForScore(record);
+    if (challengerBatPreview) return BAT_TIERS[BAT_TIERS.length - 1];
+    return runBatTier || batTierForScore(personalBest);
   }
 
   function batTierForScore(value) {
@@ -185,13 +186,30 @@
 
   function setPersonalBest(value) {
     const nextBest = Math.max(0, Number(value) || 0);
-    if (nextBest <= personalBest) return;
-    personalBest = nextBest;
-    localStorage.setItem("desk-slugger-personal-best", String(personalBest));
+    if (nextBest > personalBest) {
+      personalBest = nextBest;
+      localStorage.setItem("desk-slugger-personal-best", String(personalBest));
+    }
+    personalBestOutput.textContent = `BEST ${personalBest.toLocaleString()}`;
   }
 
   function savePersonalBest() {
+    const previousTierIndex = GameRules.batTierIndexForScore(personalBest);
     setPersonalBest(score);
+    const currentTierIndex = GameRules.batTierIndexForScore(personalBest);
+    return currentTierIndex > previousTierIndex ? BAT_TIERS[currentTierIndex] : null;
+  }
+
+  function beginRankingSession() {
+    const generation = ++rankingSessionGeneration;
+    rankingSessionToken = null;
+    window.desktopGame.startRankingSession().then((result) => {
+      if (generation !== rankingSessionGeneration) return;
+      const token = String(result?.sessionToken || "");
+      if (/^[a-f0-9]{48}$/i.test(token)) rankingSessionToken = token;
+    }).catch(() => {
+      // Offline games remain playable, but cannot be submitted to the shared ranking.
+    });
   }
 
   async function syncPersonalBestFromRanking() {
@@ -218,13 +236,18 @@
     const primaryY = desktopLayout.primaryY || 0;
     const playWidth = desktopLayout.primaryWidth || width;
     const playHeight = desktopLayout.primaryHeight || height;
-    const unit = clamp(Math.min(playWidth / 1920, playHeight / 1080), .72, 1.35);
+    const physicsScaleX = playWidth / GameRules.FLIGHT_PHYSICS.referenceWidth;
+    const physicsScaleY = playHeight / GameRules.FLIGHT_PHYSICS.referenceHeight;
+    // Actor, ball and collision sizes use the virtual stadium's vertical
+    // scale without a resolution cap. Physics itself remains 1920x1080 and is
+    // projected only for display, so 4K and low-DPI screens play identically.
+    const unit = physicsScaleY;
     const actorScale = .28 * unit;
     const ground = primaryY + playHeight - 1 * unit;
     const batterX = primaryX + playWidth * .1;
     const displays = desktopLayout.displays || [];
     return {
-      unit, actorScale, ground,
+      unit, actorScale, ground, physicsScaleX, physicsScaleY,
       primaryX, primaryY, playWidth, playHeight,
       primaryRight: primaryX + playWidth,
       primaryBottom: primaryY + playHeight,
@@ -236,6 +259,61 @@
       pitcher: { x: primaryX + playWidth * .3 },
       fielders: defenders
     };
+  }
+
+  function toWorldX(screenX, field = scene()) {
+    return (screenX - field.primaryX) / Math.max(1e-6, field.physicsScaleX);
+  }
+
+  function toWorldZ(screenZ, field = scene()) {
+    return screenZ / Math.max(1e-6, field.physicsScaleY);
+  }
+
+  function toScreenX(worldX, field = scene()) {
+    return field.primaryX + worldX * field.physicsScaleX;
+  }
+
+  function toScreenZ(worldZ, field = scene()) {
+    return worldZ * field.physicsScaleY;
+  }
+
+  function syncFlightBallToScreen(field = scene()) {
+    if (!ball || !Number.isFinite(ball.worldX)) return;
+    ball.x = toScreenX(ball.worldX, field);
+    ball.z = toScreenZ(ball.worldZ, field);
+    ball.vx = ball.worldVx * field.physicsScaleX;
+    ball.vz = ball.worldVz * field.physicsScaleY;
+    ball.depth = (ball.worldDepth || 0) * field.physicsScaleY;
+    ball.depthV = (ball.worldDepthV || 0) * field.physicsScaleY;
+    ball.r = ball.baseR;
+  }
+
+  function flightState() {
+    return {
+      x: ball.worldX,
+      z: ball.worldZ,
+      vx: ball.worldVx,
+      vz: ball.worldVz,
+      gravityScale: ball.gravityScale || 1,
+      backspin: ball.backspin || 0,
+      aeroSpeed: ball.aeroSpeed,
+      dragRate: ball.dragRate,
+      liftAcceleration: ball.liftAcceleration
+    };
+  }
+
+  function applyFlightState(state, field = scene()) {
+    ball.worldX = state.x;
+    ball.worldZ = state.z;
+    ball.worldVx = state.vx;
+    ball.worldVz = state.vz;
+    syncFlightBallToScreen(field);
+  }
+
+  function virtualCursorVelocity(field = scene()) {
+    const vx = cursor.rawVx / Math.max(1e-6, field.physicsScaleX);
+    const vy = cursor.rawVy / Math.max(1e-6, field.physicsScaleY);
+    return { vx, vy, speed: Math.hypot(vx, vy) };
   }
 
   function resize() {
@@ -285,7 +363,9 @@
 
   function resetGame() {
     rankingOnlyOpen = false;
+    runBatTier = batTierForScore(personalBest);
     score = 0;
+    difficultyScore = 0;
     strikes = 0;
     pitchNumber = 0;
     particles = [];
@@ -310,6 +390,7 @@
     centerBatControl();
     rankingRequestToken++;
     scoreSubmitted = false;
+    beginRankingSession();
     effectPreviewUntil = 0;
     pitcherCollisionPreview = false;
     pitcherReactionPose = null;
@@ -324,6 +405,9 @@
     scoreLabel.hidden = false;
     finalScoreOutput.hidden = false;
     finalRankOutput.hidden = false;
+    batUnlockNotice.hidden = true;
+    batUnlockNotice.textContent = "";
+    personalBestOutput.textContent = `BEST ${personalBest.toLocaleString()}`;
     restartButton.textContent = "다시 하기";
     nicknameInput.disabled = false;
     submitScoreButton.disabled = false;
@@ -391,6 +475,7 @@
     scoreLabel.hidden = true;
     finalScoreOutput.hidden = true;
     finalRankOutput.hidden = true;
+    batUnlockNotice.hidden = true;
     rankingForm.hidden = true;
     rankingList.hidden = true;
     rankingList.replaceChildren();
@@ -420,6 +505,7 @@
     scoreLabel.hidden = false;
     finalScoreOutput.hidden = false;
     finalRankOutput.hidden = false;
+    batUnlockNotice.hidden = true;
     restartButton.textContent = "다시 하기";
     document.body.classList.remove("result-open");
     window.desktopGame.setInteractive(false);
@@ -468,12 +554,16 @@
       nicknameInput.focus();
       return;
     }
+    if (!rankingSessionToken) {
+      setRankingStatus("랭킹 인증 세션 없음 · 다시 플레이", "failed");
+      return;
+    }
     nicknameInput.disabled = true;
     submitScoreButton.disabled = true;
     setRankingStatus("랭킹 등록 중");
     const token = rankingRequestToken;
     try {
-      const result = await window.desktopGame.submitScore(nickname, score);
+      const result = await window.desktopGame.submitScore(nickname, score, rankingSessionToken);
       if (token !== rankingRequestToken || phase !== "gameover") return;
       if (!result?.ok) {
         rankingForm.hidden = true;
@@ -561,14 +651,7 @@
         wobble: [6, 11], wobbleCycles: [3.1, 5.2], depthWobble: [6, 13]
       }
     };
-    const stage = score < 500 ? 0
-      : score < 1000 ? 1
-        : score < 2000 ? 2
-          : score < 3000 ? 3
-            : score < 4000 ? 4
-              : score < 5000 ? 5
-                : score < 10000 ? 6
-                  : 7;
+    const stage = GameRules.pitchStageForScore(difficultyScore);
     const pools = [
       [pitches.slowFast],
       [pitches.fast],
@@ -623,6 +706,10 @@
       wobbleCycles: preset.wobbleCycles ? rand(...preset.wobbleCycles) : 0,
       depthWobble: preset.depthWobble ? rand(...preset.depthWobble) * field.unit : 0,
       pitchStage: preset.stage,
+      pitchWorldVx: 0,
+      pitchWorldVy: 0,
+      pitchWorldDepthV: 0,
+      pitchWorldSpeed: 0,
       pitchTime: 0,
       t: 0,
       baseR: 2.7 * field.unit,
@@ -649,6 +736,7 @@
       primaryEdgeCrossed: false,
       boundaryScoreAwarded: false,
       boundaryPoints: 0,
+      luckyHit: false,
       magicEffect: preset.magicEffect || null,
       kind: preset.name
     });
@@ -824,7 +912,8 @@
 
   function updateBatControl(dt) {
     const field = scene();
-    const speedFactor = clamp(cursor.rawSpeed / 1700, 0, 1);
+    const virtualCursor = virtualCursorVelocity(field);
+    const speedFactor = clamp(virtualCursor.speed / 1700, 0, 1);
     const follow = 1 - Math.exp(-lerp(20, 48, speedFactor) * dt);
     const previousX = cursor.x;
     const previousY = cursor.y;
@@ -865,8 +954,11 @@
     // update and shared with rendering below.
     const motionPose = batPose();
     if (bat3d.previousTip) {
-      let vx = (motionPose.x2 - bat3d.previousTip.x) / Math.max(dt, .001);
-      let vy = (motionPose.y2 - bat3d.previousTip.y) / Math.max(dt, .001);
+      // The bat is a local rigid object, so both axes use the uniform vertical
+      // display scale. Using the stadium's stretched X projection here would
+      // make the same mouse swing weaker on ultrawide monitors.
+      let vx = (motionPose.x2 - bat3d.previousTip.x) / Math.max(dt, .001) / Math.max(1e-6, field.physicsScaleY);
+      let vy = (motionPose.y2 - bat3d.previousTip.y) / Math.max(dt, .001) / Math.max(1e-6, field.physicsScaleY);
       const rawSpeed = Math.hypot(vx, vy);
       if (rawSpeed > 2500) {
         const scale = 2500 / rawSpeed;
@@ -891,9 +983,9 @@
         speed: bat3d.tipSpeed,
         vx: bat3d.tipVx,
         vy: bat3d.tipVy,
-        rawVx: cursor.rawVx,
-        rawVy: cursor.rawVy,
-        rawSpeed: cursor.rawSpeed,
+        rawVx: virtualCursor.vx,
+        rawVy: virtualCursor.vy,
+        rawSpeed: virtualCursor.speed,
         age: 0
       });
       if (batContactTrail.length > 18) batContactTrail.shift();
@@ -951,14 +1043,15 @@
   }
 
   function assistedBatContact(px, py, current, radius) {
+    const virtualRaw = virtualCursorVelocity();
     let best = {
       ...sweptBatContact(px, py, previousPhysicsBat || current, current, radius),
       speed: bat3d.tipSpeed,
       vx: bat3d.tipVx,
       vy: bat3d.tipVy,
-      rawVx: cursor.rawVx,
-      rawVy: cursor.rawVy,
-      rawSpeed: cursor.rawSpeed,
+      rawVx: virtualRaw.vx,
+      rawVy: virtualRaw.vy,
+      rawSpeed: virtualRaw.speed,
       age: 0
     };
     for (let index = 0; index < batContactTrail.length; index++) {
@@ -983,10 +1076,11 @@
 
   function predictedLandingX() {
     if (!ball || ball.grounded) return ball?.x || 0;
-    const gravity = scene().playHeight * 1.08 * (ball.gravityScale || 1);
-    const floor = ball.r;
-    const time = (ball.vz + Math.sqrt(Math.max(0, ball.vz * ball.vz + 2 * gravity * Math.max(0, ball.z - floor)))) / gravity;
-    return ball.x + ball.vx * time;
+    const field = scene();
+    if (!Number.isFinite(ball.worldX)) return ball.x;
+    const floor = toWorldZ(ball.r, field);
+    const landing = GameRules.predictFloorContact(flightState(), floor, 8);
+    return landing ? toScreenX(landing.x, field) : ball.x;
   }
 
   function assignDefense() {
@@ -1114,6 +1208,54 @@
     return { strength, flight, strengthIndex, trajectoryIndex: trajectory };
   }
 
+  function addLuckyImpact(x, y, directionAngle, depth = 0) {
+    const depthScale = clamp(1 + depth * .12, .88, 1.12);
+    const colorsLucky = ["#75ff9d", "#dfff72", "#ffe66d", "#ffffff"];
+    for (let index = 0; index < 3; index++) {
+      const life = .26 + index * .055;
+      impactRings.push({
+        x, y,
+        angle: directionAngle + index * .18,
+        squash: .3 + index * .08,
+        radius: 3 + index * 1.5,
+        startRadius: 3 + index * 1.5,
+        maxRadius: (38 + index * 18) * depthScale,
+        life,
+        maxLife: life,
+        color: colorsLucky[index],
+        width: 2.2 - index * .35,
+        glow: .72 - index * .14,
+        alphaScale: 1.08,
+        layer: "front"
+      });
+    }
+    for (let index = 0; index < 28; index++) {
+      const angle = directionAngle + rand(-.72, .72) + (index % 6 === 0 ? Math.PI : 0);
+      const forward = index % 6 !== 0;
+      const speed = rand(forward ? 105 : 42, forward ? 275 : 105) * depthScale;
+      const life = rand(.34, .7);
+      particles.push({
+        x, y,
+        vx: Math.cos(angle) * speed,
+        vy: Math.sin(angle) * speed,
+        color: colorsLucky[index % colorsLucky.length],
+        life,
+        maxLife: life,
+        size: rand(1.35, 2.9) * depthScale,
+        shape: index % 3 === 0 ? "star" : "diamond",
+        rotation: rand(0, Math.PI * 2),
+        spin: rand(-8, 8),
+        gravity: rand(22, 68),
+        drag: .2,
+        dragY: .26,
+        pulseRate: rand(11, 18),
+        phase: rand(0, Math.PI * 2),
+        alphaScale: 1.12,
+        layer: index % 5 === 0 ? "back" : "front"
+      });
+    }
+  }
+
   function previewHitEffects() {
     if (phase === "gameover") return;
     effectPreviewTimers.forEach(clearTimeout);
@@ -1163,7 +1305,7 @@
     impactLines = [];
     impactRings = [];
     edgeBlasts = [];
-    const pageMs = 1320;
+    const pageMs = 1860;
     effectPreviewUntil = performance.now() + HOME_RUN_REWARDS.length * pageMs + 450;
     HOME_RUN_REWARDS.forEach((reward, index) => {
       const timer = setTimeout(() => {
@@ -1171,7 +1313,7 @@
         particles = [];
         feedbacks = [];
         edgeBlasts = [];
-        const nextMin = HOME_RUN_REWARDS[index + 1]?.min ?? .78;
+        const nextMin = HOME_RUN_REWARDS[index + 1]?.min ?? 1;
         const previewHeight = (reward.min + nextMin) * .5;
         const y = clamp(field.ground - field.playHeight * previewHeight, field.primaryY + 16, field.ground - 12);
         playBoundaryExitEffect(y, reward, field.primaryRight - 1);
@@ -1186,17 +1328,18 @@
     pitcherCollisionPreview = true;
     const field = scene();
     const radius = 2.7 * field.unit;
+    const previewX = field.pitcher.x - 96 * field.unit;
     phase = "flight";
     phaseTime = 0;
     pitchClock = -1;
     nextPitchDelay = 999;
     ball = {
-      x: field.pitcher.x - 96 * field.unit,
+      x: previewX,
       y: field.ground,
       z: 14.5 * field.unit,
       depth: 0,
       depthV: 0,
-      vx: 470 * field.unit,
+      vx: 470 * field.physicsScaleX,
       vz: 0,
       baseR: radius,
       r: radius,
@@ -1209,6 +1352,15 @@
       grounded: false,
       bounces: 0,
       gravityScale: .025,
+      worldX: toWorldX(previewX, field),
+      worldZ: 14.5,
+      worldVx: 470,
+      worldVz: 0,
+      worldDepth: 0,
+      worldDepthV: 0,
+      aeroSpeed: 470,
+      dragRate: GameRules.FLIGHT_PHYSICS.airDrag * .55,
+      liftAcceleration: 0,
       bounce: .28,
       undercut: 0,
       carry: 0,
@@ -1238,9 +1390,9 @@
   function addHomeRunCelebrationParticles(field, y, reward) {
     // These particles support the boundary motif; they must not become a
     // second full-screen explosion competing with it.
-    const counts = [2, 4, 6, 8, 10, 13, 17];
-    const coverageStart = [.84, .8, .76, .71, .65, .59, .53][reward.tier];
-    const verticalSpread = [.04, .055, .07, .09, .115, .15, .2][reward.tier];
+    const counts = [2, 4, 6, 8, 10, 13, 17, 18, 20];
+    const coverageStart = [.84, .8, .76, .71, .65, .59, .53, .47, .41][reward.tier];
+    const verticalSpread = [.04, .055, .07, .09, .115, .15, .2, .24, .29][reward.tier];
     const count = counts[reward.tier];
     for (let index = 0; index < count; index++) {
       const x = field.primaryX + field.playWidth * rand(coverageStart, .97);
@@ -1320,8 +1472,9 @@
 
   function addRightEdgeBlast(y, force = 1, reward = HOME_RUN_REWARDS[0], edgeX = width - 1) {
     const { tier, style, color, rgb } = reward;
-    const maxLife = .68 + tier * .065;
-    const shardCount = Math.round(6 + force * 6 + tier * 2.2);
+    const cinematic = style === "plane" || style === "moon";
+    const maxLife = style === "plane" ? 1.58 : style === "moon" ? 1.82 : .68 + tier * .065;
+    const shardCount = cinematic ? 0 : Math.round(6 + force * 6 + tier * 2.2);
     const shards = Array.from({ length: shardCount }, (_, index) => ({
       angle: Math.PI + rand(-1.02, 1.02),
       speed: rand(70, 225) * lerp(.8, 1.18, force),
@@ -1331,7 +1484,7 @@
       delay: rand(0, .1),
       color: index % 5 === 0 ? colors.yellow : index % 2 ? "#ffffff" : color
     }));
-    const rayCount = 4 + tier * 2;
+    const rayCount = cinematic ? 0 : 4 + tier * 2;
     const rays = Array.from({ length: rayCount }, (_, index) => ({
       angle: Math.PI + lerp(-.92, .92, index / Math.max(1, rayCount - 1)) + rand(-.08, .08),
       length: rand(24, 56 + tier * 10) * lerp(.82, 1.2, force),
@@ -1355,6 +1508,7 @@
       rgb,
       life: maxLife,
       maxLife,
+      impactTriggered: false,
       radius: 28 + force * 24 + tier * 8,
       shards,
       rays,
@@ -1394,36 +1548,60 @@
     const sweet = clamp(1 - Math.abs(contact.t - .76) / .4 + batTier.accuracy, 0, 1);
     const direction = clamp(contact.vx / Math.max(1, contact.speed), 0, 1);
     const timing = lerp(1, .9, clamp(contact.age / HITTING.timingMemory, 0, 1));
-    const quality = clamp((center * .4 + sweet * .34 + direction * .16) * timing + .12, .2, 1);
+    const luckyHit = GameRules.isLuckyHit(Math.random());
+    let quality = clamp((center * .4 + sweet * .34 + direction * .16) * timing + .12, .2, 1);
     // A visible bat/ball touch should produce a satisfying result. Accuracy
     // still separates a bloop from a perfect drive, but low-speed contact no
     // longer dies directly in front of the batter.
-    const power = clamp((contact.speed / 620) * (.74 + quality * .72) * (1 + batTier.power), .38, 1);
+    let power = clamp((contact.speed / 620) * (.74 + quality * .72) * (1 + batTier.power), .38, 1);
     const projectedUpward = clamp(-contact.vy / Math.max(1, contact.speed), -1, 1);
     const rawUpward = (contact.rawSpeed || 0) > 45
       ? clamp(-contact.rawVy / contact.rawSpeed, -1, 1)
       : projectedUpward;
     // Blend the literal mouse gesture back into the projected 3D bat speed so
     // foreshortening cannot erase a deliberate lower-left to upper-right cut.
-    const upward = lerp(projectedUpward, rawUpward, .46);
+    const upward = lerp(projectedUpward, rawUpward, .62);
     // Positive offset means the bat passed below the ball's center. Unlike the
     // old unsigned distance, this lets an actual undercut create real loft.
     const undercut = clamp((contact.y - ball.y) / Math.max(ball.r + 9 * field.unit, 1), -1, 1);
-    const launchDegrees = clamp(
-      18 + upward * 29 + undercut * 25 + (sweet - .5) * 9 + (center - .5) * 6,
-      -8,
-      65
+    const loftIntent = clamp(
+      clamp(rawUpward, 0, 1) * .6
+      + clamp(undercut, 0, 1) * .25
+      + clamp(projectedUpward, 0, 1) * .15,
+      0,
+      1
     );
+    // Only a deliberate uppercut with solid contact earns the nonlinear loft
+    // assist. A random upward cursor flick or a mishit therefore stays weak.
+    let loftAssist = smooth((loftIntent - .18) / .62) * smooth((quality - .48) / .42);
+    let launchDegrees = clamp(
+      20 + upward * 29 + undercut * 30 + (sweet - .5) * 9 + (center - .5) * 6,
+      -8,
+      68
+    );
+    if (luckyHit) {
+      quality = GameRules.LUCKY_HIT_PROFILE.quality;
+      power = GameRules.LUCKY_HIT_PROFILE.power;
+      loftAssist = GameRules.LUCKY_HIT_PROFILE.loftAssist;
+      launchDegrees = GameRules.LUCKY_HIT_PROFILE.launchDegrees;
+    }
     const launchAngle = launchDegrees * Math.PI / 180;
     const accuracy = center * .56 + sweet * .44;
-    const perfectContact = center >= .82 && sweet >= .8 && power >= .86;
-    const strengthIndex = hitStrengthIndex(quality, power, center, sweet);
+    const perfectContact = luckyHit || (center >= .82 && sweet >= .8 && power >= .86);
+    const strengthIndex = luckyHit ? HIT_STRENGTHS.length - 1 : hitStrengthIndex(quality, power, center, sweet);
     const trajectory = trajectoryIndex(launchDegrees);
     const strengthVelocity = [.88, .94, 1, 1.05, 1.1, 1.15][strengthIndex];
-    const exitSpeed = field.playWidth * (.34 + power * .68) * strengthVelocity;
-    const carry = clamp((power - .42) / .58, 0, 1) * clamp((launchDegrees - 20) / 34, 0, 1);
-    const verticalBoost = 1 + carry * .19;
-    const backspin = clamp(undercut * .66 + upward * .42, -1, 1);
+    const pitchSpeed = Math.max(0, ball.pitchWorldSpeed || 0);
+    const opposingImpact = pitchSpeed > 1
+      ? clamp(-(contact.vx * (ball.pitchWorldVx || 0) + contact.vy * (ball.pitchWorldVy || 0)) / Math.max(1, contact.speed * pitchSpeed), 0, 1)
+      : 0;
+    const pitchMomentumBonus = GameRules.pitchMomentumBonus(pitchSpeed) * lerp(.35, 1, opposingImpact) * lerp(.65, 1, quality);
+    const exitSpeed = GameRules.FLIGHT_PHYSICS.referenceWidth * (.34 + power * .68) * strengthVelocity * (1 + pitchMomentumBonus);
+    const carry = luckyHit ? GameRules.LUCKY_HIT_PROFILE.carry : clamp((power - .42) / .58, 0, 1) * clamp((launchDegrees - 20) / 34, 0, 1);
+    const lowPowerSupport = loftAssist * clamp((.7 - power) / .32, 0, 1) * .08;
+    const verticalBonus = luckyHit ? GameRules.LUCKY_HIT_PROFILE.verticalBonus : clamp(carry * .18 + loftAssist * .14 + lowPowerSupport, 0, .32);
+    const verticalBoost = 1 + verticalBonus;
+    const backspin = luckyHit ? GameRules.LUCKY_HIT_PROFILE.backspin : clamp(undercut * .66 + upward * .42, -1, 1);
 
     const impactX = ball.x;
     const impactY = ball.y;
@@ -1437,15 +1615,33 @@
     // code subtracted the radius here and then subtracted Z again while drawing,
     // leaving some landed balls visibly floating above the desktop ground.
     ball.y = field.ground;
-    ball.z = Math.max(ball.baseR, field.ground - impactY);
+    ball.worldX = toWorldX(impactX, field);
+    ball.worldZ = Math.max(toWorldZ(ball.baseR, field), toWorldZ(field.ground - impactY, field));
     ball.depth = 0;
-    ball.vx = exitSpeed * Math.cos(launchAngle);
-    ball.vz = exitSpeed * Math.sin(launchAngle) * verticalBoost;
-    ball.gravityScale = clamp(lerp(1.04, .86, (backspin + 1) * .5) - carry * .07, .78, 1.08);
+    ball.worldVx = exitSpeed * Math.cos(launchAngle);
+    ball.worldVz = exitSpeed * Math.sin(launchAngle) * verticalBoost;
+    ball.worldDepth = 0;
+    ball.worldDepthV = bat.depth * GameRules.FLIGHT_PHYSICS.referenceHeight * .075;
+    ball.gravityScale = clamp(
+      1 - carry * .025 - loftAssist * .07,
+      .9,
+      1
+    );
     ball.undercut = undercut;
     ball.backspin = backspin;
+    ball.aeroSpeed = exitSpeed;
+    const aeroRatio = clamp(exitSpeed / 900, .25, 1.2);
+    ball.dragRate = GameRules.FLIGHT_PHYSICS.airDrag * clamp(exitSpeed / 900, .45, 1.35);
+    ball.liftAcceleration = GameRules.FLIGHT_PHYSICS.gravity * (
+      GameRules.FLIGHT_PHYSICS.backspinLift * Math.max(0, backspin)
+      - GameRules.FLIGHT_PHYSICS.topspinDrop * Math.max(0, -backspin)
+    ) * aeroRatio;
     ball.carry = carry;
-    ball.depthV = bat.depth * field.playHeight * .075;
+    ball.loftIntent = loftIntent;
+    ball.loftAssist = loftAssist;
+    ball.pitchMomentumBonus = pitchMomentumBonus;
+    ball.luckyHit = luckyHit;
+    syncFlightBallToScreen(field);
     ball.spinRate = (18 + Math.abs(backspin) * 27 + power * 18) * (backspin >= 0 ? -1 : 1);
     ball.spinTilt = clamp(launchAngle * .55 + bat.depth * .42, -.85, .85);
     ball.bounce = lerp(.24, .48, quality);
@@ -1473,6 +1669,7 @@
       depth: bat.depth,
       power
     });
+    if (luckyHit) addLuckyImpact(impactX, impactY, effectAngle, bat.depth);
     const heavyContact = strengthIndex >= 4;
     const freezeFrames = impact.strength.freeze;
     impactFreeze = freezeFrames / ANIMATION_FPS;
@@ -1491,25 +1688,36 @@
     assignDefense();
   }
 
+  function projectedBallY(y, z, depth, r, field = scene()) {
+    return Math.min(
+      y - (z || 0) + (depth || 0) * .1,
+      field.ground - r
+    );
+  }
+
   function recordBallTrail(x, y, z, r, mode) {
     if (!ball) return;
     const now = performance.now();
-    const screenY = y - (z || 0);
+    const depth = ball.depth || 0;
+    // Store the final on-screen coordinate instead of projecting the trail
+    // again during drawing. This makes every sample use the same depth and
+    // ground clamp as the ball in the frame where the sample was captured.
+    const screenY = projectedBallY(y, z, depth, r);
     const previous = ball.trail[ball.trail.length - 1];
-    const previousY = previous ? previous.y - (previous.z || 0) : screenY;
+    const previousY = previous?.screenY ?? screenY;
     const distance = previous ? Math.hypot(x - previous.x, screenY - previousY) : Infinity;
     const elapsed = previous ? Math.max(1, now - previous.at) : 1000 / 60;
-    const minSpacing = Math.max(2.2 * scene().unit, r * .72);
+    const minSpacing = Math.max(1.25 * scene().unit, r * .42);
 
     // Keep samples spatially even. This prevents slow balls from becoming a
     // string of overlapping dots while still preserving a fast curved path.
-    if (previous && distance < minSpacing && elapsed < 42) return;
+    if (previous && distance < minSpacing && elapsed < 28) return;
 
     const speed = distance === Infinity ? 0 : distance / elapsed * 1000;
     const speedFactor = clamp((speed - 70) / 760, 0, 1);
     const baseLife = mode === "hit" ? .24 : mode === "pitch" ? .19 : mode === "return" ? .15 : .09;
     const life = baseLife * lerp(.72, 1.12, speedFactor);
-    ball.trail.push({ x, y, z, r, at: now, life, speed, mode });
+    ball.trail.push({ x, y, z, depth, screenY, r, at: now, life, speed, mode });
     ball.trail = ball.trail.filter((point) => (now - point.at) / 1000 < point.life);
     if (ball.trail.length > 16) ball.trail.splice(0, ball.trail.length - 16);
   }
@@ -1531,6 +1739,9 @@
     ball.pitchTime += dt;
     ball.spinPhase += ball.spinRate * dt;
     ball.t = ball.pitchTime / ball.duration;
+    const previousPitchX = ball.x;
+    const previousPitchY = ball.y;
+    const previousPitchDepth = ball.depth;
     const t = ball.t;
     const clamped = clamp(t, 0, 1);
     const spacing = lerp(clamped, clamped * clamped, ball.acceleration || 0);
@@ -1544,6 +1755,11 @@
       + Math.sin(wobblePhase) * (ball.wobble || 0) * wobbleEnvelope;
     ball.depth = ball.pitchDepth * clamped
       + Math.cos(wobblePhase * .86) * (ball.depthWobble || 0) * wobbleEnvelope;
+    const velocityDt = Math.max(dt, 1 / 240);
+    ball.pitchWorldVx = (ball.x - previousPitchX) / Math.max(1e-6, field.physicsScaleX) / velocityDt;
+    ball.pitchWorldVy = (ball.y - previousPitchY) / Math.max(1e-6, field.physicsScaleY) / velocityDt;
+    ball.pitchWorldDepthV = (ball.depth - previousPitchDepth) / Math.max(1e-6, field.physicsScaleY) / velocityDt;
+    ball.pitchWorldSpeed = Math.hypot(ball.pitchWorldVx, ball.pitchWorldVy, ball.pitchWorldDepthV);
     ball.r = ball.baseR;
     ball.y = Math.min(ball.y, field.ground - ball.r - field.unit);
     recordBallTrail(ball.x, ball.y, 0, ball.r, "pitch");
@@ -1609,35 +1825,21 @@
   }
 
   function edgeReward(edgeHeight) {
-    for (let index = HOME_RUN_REWARDS.length - 1; index >= 0; index--) {
-      if (edgeHeight >= HOME_RUN_REWARDS[index].min) return HOME_RUN_REWARDS[index];
-    }
-    return HOME_RUN_REWARDS[0];
+    return GameRules.edgeReward(edgeHeight);
   }
 
   function scoreForBall() {
-    const field = scene();
-    // A ball that clears the right boundary is scored by the exact height at
-    // which it left the monitor. Higher exits always earn more; the previous
-    // max-height table accidentally dropped the very highest tier back down.
-    if (Number.isFinite(ball.edgeHeight)) {
-      return edgeReward(ball.edgeHeight).points;
-    }
-    if (ball.contactType === "GROUNDER" || ball.grounded) return 100;
-    const normalizedHeight = ball.maxHeight / field.playHeight;
-    const normalizedX = (Math.max(ball.x, ball.predictedX) - field.primaryX) / field.playWidth;
-    if (normalizedHeight > .43) return 1000;
-    if (normalizedHeight > .27) return 500;
-    if (normalizedHeight > .15) return 500;
-    if (normalizedX > .72) return 200;
-    return 100;
+    return GameRules.scoreForBall(ball, scene());
   }
 
   function resolveHit(label = "HIT") {
     if (phase !== "flight") return;
     const alreadyAwarded = Boolean(ball.boundaryScoreAwarded);
     const points = alreadyAwarded ? ball.boundaryPoints : scoreForBall();
-    if (!alreadyAwarded) score += points;
+    if (!alreadyAwarded) {
+      score += points;
+      difficultyScore += GameRules.difficultyPointsForHit(points);
+    }
     phase = "result";
     phaseTime = 0;
     lastOutcome = label;
@@ -1670,6 +1872,7 @@
     ball.boundaryScoreAwarded = true;
     ball.boundaryPoints = reward.points;
     score += reward.points;
+    difficultyScore += GameRules.difficultyPointsForHit(reward.points);
   }
 
   function pointSegmentDistanceSquared(point, start, end) {
@@ -1684,15 +1887,27 @@
   }
 
   function predictedPitcherCatch() {
-    if (phase !== "flight" || !ball || ball.caught || ball.vx <= 0) return null;
+    if (phase !== "flight" || !ball || ball.caught || ball.worldVx <= 0) return null;
     const field = scene();
     const catchX = field.pitcher.x - 10 * field.unit;
-    const time = (catchX - ball.x) / ball.vx;
+    const catchWorldX = toWorldX(catchX, field);
+    if (catchWorldX <= ball.worldX) return null;
+    const start = flightState();
+    const horizon = .28;
+    if (GameRules.advanceFlight(start, horizon).x < catchWorldX) return null;
+    let low = 0;
+    let high = horizon;
+    for (let index = 0; index < 12; index++) {
+      const middle = (low + high) * .5;
+      if (GameRules.advanceFlight(start, middle).x < catchWorldX) low = middle;
+      else high = middle;
+    }
+    const time = high;
     if (time <= .015 || time > .28) return null;
-    const gravity = field.playHeight * 1.08 * (ball.gravityScale || 1);
-    const z = ball.z + ball.vz * time - gravity * time * time * .5;
-    const depth = ball.depth + ball.depthV * time;
-    const screenY = field.ground - Math.max(ball.r, z) + depth * .1;
+    const predicted = GameRules.advanceFlight(start, time);
+    const depthDecay = -Math.log(.34);
+    const depth = (ball.worldDepth || 0) + (ball.worldDepthV || 0) * (1 - Math.exp(-depthDecay * time)) / depthDecay;
+    const screenY = field.ground - Math.max(ball.r, toScreenZ(predicted.z, field)) + toScreenZ(depth, field) * .1;
     if (screenY < field.ground - 31 * field.unit || screenY > field.ground - 1.5 * field.unit) return null;
     return {
       x: catchX,
@@ -1760,6 +1975,9 @@
     ball.vx = 0;
     ball.vz = 0;
     ball.depthV = 0;
+    ball.worldVx = 0;
+    ball.worldVz = 0;
+    ball.worldDepthV = 0;
     ball.spinRate = 0;
     ball.spinTilt = 0;
     addImpact(glove.x, glove.y, {
@@ -1779,27 +1997,71 @@
     pitcherCatchTarget = null;
   }
 
+  function advanceBattedFlight(dt, allowBounce = true) {
+    const field = scene();
+    const floor = toWorldZ(ball.r, field);
+    if (ball.grounded) {
+      const dragRate = -Math.log(.075);
+      const decay = Math.exp(-dragRate * dt);
+      ball.worldX += ball.worldVx * (1 - decay) / dragRate;
+      ball.worldVx *= decay;
+      ball.worldZ = floor;
+      ball.worldVz = 0;
+    } else {
+      const start = flightState();
+      let next = GameRules.advanceFlight(start, dt);
+      if (next.z <= floor) {
+        const contact = GameRules.predictFloorContact(start, floor, dt) || { ...next, z: floor, time: dt };
+        const canBounce = allowBounce
+          && Math.abs(contact.vz) > GameRules.FLIGHT_PHYSICS.referenceHeight * .075
+          && ball.bounces < 2;
+        if (canBounce) {
+          const rebound = {
+            ...contact,
+            z: floor,
+            vx: contact.vx * .76,
+            vz: -contact.vz * ball.bounce,
+            gravityScale: ball.gravityScale || 1,
+            backspin: ball.backspin || 0
+          };
+          next = GameRules.advanceFlight(rebound, Math.max(0, dt - contact.time));
+          ball.bounces++;
+          burst(toScreenX(contact.x, field), field.ground - 2, colors.cream, 5, .35);
+        } else {
+          next = { ...contact, z: floor, vz: 0 };
+          ball.grounded = true;
+        }
+      }
+      applyFlightState(next, field);
+    }
+    const depthDragRate = -Math.log(.34);
+    const depthDecay = Math.exp(-depthDragRate * dt);
+    ball.worldDepth += ball.worldDepthV * (1 - depthDecay) / depthDragRate;
+    ball.worldDepthV *= depthDecay;
+    syncFlightBallToScreen(field);
+    ball.maxHeight = Math.max(ball.maxHeight, ball.z);
+    if (ball.grounded) ball.spinRate *= Math.pow(.2, dt);
+  }
+
   function updatePitcherCatching(dt) {
     if (!ball) return;
     const field = scene();
-    const gravity = field.playHeight * 1.08 * (ball.gravityScale || 1);
     ball.spinPhase += ball.spinRate * dt;
-    ball.x += ball.vx * dt;
-    ball.z += ball.vz * dt;
-    ball.vz -= gravity * dt;
-    ball.depth += ball.depthV * dt;
-    if (ball.z <= ball.r) {
-      ball.z = ball.r;
-      ball.vz = 0;
-      ball.grounded = true;
-      ball.vx *= Math.pow(.35, dt);
-    }
+    advanceBattedFlight(dt, false);
     const glove = pitcherCatchGloveWorld();
     recordBallTrail(ball.x, field.ground, ball.z, ball.r, "hit");
     const ballY = field.ground - ball.z + ball.depth * .1;
     const gloveDistance = Math.hypot(ball.x - glove.x, ballY - glove.y);
-    if (phaseTime >= (pitcherCatchTarget?.duration || .16) || gloveDistance <= ball.r + 4.5 * field.unit) {
+    const catchDuration = pitcherCatchTarget?.duration || .16;
+    if (gloveDistance <= ball.r + 4.5 * field.unit) {
       completePitcherCatch();
+    } else if (phaseTime > catchDuration + .1) {
+      // Prediction and flight use the same solver, but never teleport a ball
+      // into the glove if an animation pose still fails to meet it.
+      phase = "flight";
+      phaseTime = 0;
+      pitcherCatchTarget = null;
+      pitcherReactionPose = null;
     }
   }
 
@@ -1950,32 +2212,8 @@
       beginPitcherCatch(catchTarget);
       return;
     }
-    const gravity = field.playHeight * 1.08 * (ball.gravityScale || 1);
     ball.spinPhase += ball.spinRate * dt;
-    ball.x += ball.vx * dt;
-    ball.z += ball.vz * dt;
-    ball.vz -= gravity * dt;
-    ball.depth += ball.depthV * dt;
-    ball.depthV *= Math.pow(.34, dt);
-    ball.maxHeight = Math.max(ball.maxHeight, ball.z);
-    ball.r = ball.baseR;
-
-    if (ball.z <= ball.r) {
-      ball.z = ball.r;
-      if (!ball.grounded && Math.abs(ball.vz) > field.playHeight * .075 && ball.bounces < 2) {
-        ball.vz = -ball.vz * ball.bounce;
-        ball.vx *= .76;
-        ball.bounces++;
-        burst(ball.x, field.ground - 2, colors.cream, 5, .35);
-      } else {
-        ball.grounded = true;
-        ball.vz = 0;
-      }
-    }
-    if (ball.grounded) {
-      ball.vx *= Math.pow(.075, dt);
-      ball.spinRate *= Math.pow(.2, dt);
-    }
+    advanceBattedFlight(dt, true);
     ball.predictedX = predictedLandingX();
     const currentBallScreen = {
       x: ball.x,
@@ -2015,7 +2253,7 @@
     }
     const safelyExpired = phaseTime > 8 || (phaseTime > 4.5 && ball.grounded);
     const beyondVisibleDesktop = ball.x > field.primaryRight + 40;
-    if ((ball.grounded && Math.abs(ball.vx) < 28) || beyondVisibleDesktop || safelyExpired) resolveHit("HIT");
+    if ((ball.grounded && Math.abs(ball.worldVx) < 28) || beyondVisibleDesktop || safelyExpired) resolveHit("HIT");
   }
 
   function missPitch() {
@@ -2131,7 +2369,7 @@
 
   function endGame(reason) {
     if (phase === "gameover") return;
-    savePersonalBest();
+    const unlockedTier = savePersonalBest();
     phase = "gameover";
     phaseTime = 0;
     lastOutcome = reason;
@@ -2140,6 +2378,15 @@
     const finalTier = batTierForScore(score);
     finalRankOutput.textContent = finalTier.name;
     finalRankOutput.style.setProperty("--rank-color", `rgb(${finalTier.tip.join(",")})`);
+    personalBestOutput.textContent = `BEST ${personalBest.toLocaleString()}`;
+    if (unlockedTier) {
+      batUnlockNotice.textContent = `${unlockedTier.name} 배트 해금`;
+      batUnlockNotice.style.setProperty("--unlock-color", `rgb(${unlockedTier.tip.join(",")})`);
+      batUnlockNotice.hidden = false;
+    } else {
+      batUnlockNotice.hidden = true;
+      batUnlockNotice.textContent = "";
+    }
     document.body.classList.add("result-open");
     gameOverPanel.hidden = false;
     window.desktopGame.setInteractive(true);
@@ -2175,7 +2422,15 @@
       const progress = 1 - clamp(ring.life / ring.maxLife, 0, 1);
       ring.radius = lerp(ring.startRadius || 4, ring.maxRadius, smooth(progress));
     });
-    edgeBlasts.forEach((blast) => { blast.life -= dt; });
+    edgeBlasts.forEach((blast) => {
+      blast.life -= dt;
+      const progress = clamp(1 - blast.life / blast.maxLife, 0, 1);
+      const impactAt = blast.style === "moon" ? .62 : blast.style === "plane" ? .77 : Infinity;
+      if (!blast.impactTriggered && progress >= impactAt) {
+        blast.impactTriggered = true;
+        shake = Math.max(shake, blast.style === "moon" ? 18 : 12);
+      }
+    });
     if (impactPunch) {
       impactPunch.life -= dt;
       if (impactPunch.releaseLife > 0) impactPunch.releaseLife -= dt;
@@ -2380,6 +2635,17 @@
     }
     const barrel = { x: lerp(bat.x1, bat.x2, .56), y: lerp(bat.y1, bat.y2, .56) };
     ctx.lineCap = "round";
+    if (tier.prestige) {
+      const auraColor = tier.prestige === "arcane" ? "#c36cff" : tier.prestige === "infernal" ? "#ff4c28" : "#56e7ff";
+      ctx.save();
+      ctx.globalAlpha = tier.prestige === "celestial" ? .34 : .25;
+      ctx.strokeStyle = auraColor;
+      ctx.shadowColor = auraColor;
+      ctx.shadowBlur = (tier.prestige === "celestial" ? 6.5 : 4.5) * field.unit;
+      ctx.lineWidth = bat.width + (tier.prestige === "celestial" ? 3 : 2.4) * field.unit;
+      ctx.beginPath(); ctx.moveTo(barrel.x, barrel.y); ctx.lineTo(bat.x2, bat.y2); ctx.stroke();
+      ctx.restore();
+    }
     ctx.strokeStyle = rim;
     ctx.lineWidth = bat.width + 1.6 * field.unit;
     ctx.beginPath(); ctx.moveTo(bat.x1, bat.y1); ctx.lineTo(bat.x2, bat.y2); ctx.stroke();
@@ -2393,6 +2659,7 @@
     ctx.lineWidth = Math.max(.45, bat.width * .2);
     ctx.beginPath(); ctx.moveTo(barrel.x, barrel.y); ctx.lineTo(bat.x2, bat.y2); ctx.stroke();
     ctx.globalAlpha = 1;
+    drawPrestigeBatDetails(bat, tier, field, signedDepth);
     if (Math.abs(bat.depth) > .72) {
       ctx.fillStyle = tipInk;
       const endRadius = Math.max(bat.width * 1.12, 2.1 * field.unit);
@@ -2401,6 +2668,81 @@
       ctx.lineWidth = Math.max(.7, field.unit);
       ctx.stroke();
     }
+  }
+
+  function drawPrestigeBatDetails(bat, tier, field, signedDepth) {
+    if (!tier.prestige) return;
+    const dx = bat.x2 - bat.x1;
+    const dy = bat.y2 - bat.y1;
+    const length = Math.max(1, Math.hypot(dx, dy));
+    const nx = -dy / length;
+    const ny = dx / length;
+    const depthFade = lerp(.62, 1, clamp((signedDepth + 1) * .5, 0, 1));
+    const band = (t, halfWidth, color, lineWidth = 1) => {
+      const x = lerp(bat.x1, bat.x2, t);
+      const y = lerp(bat.y1, bat.y2, t);
+      ctx.strokeStyle = color;
+      ctx.lineWidth = Math.max(.55, lineWidth * field.unit);
+      ctx.beginPath();
+      ctx.moveTo(x - nx * halfWidth, y - ny * halfWidth);
+      ctx.lineTo(x + nx * halfWidth, y + ny * halfWidth);
+      ctx.stroke();
+    };
+
+    ctx.save();
+    ctx.globalAlpha = depthFade;
+    ctx.lineCap = "round";
+    if (tier.prestige === "arcane") {
+      const silver = batColor(tier.shine, .14);
+      band(.53, bat.width * .5, silver, .72);
+      band(.68, bat.width * .62, "#dba4ff", .8);
+      band(.84, bat.width * .68, silver, .72);
+      const markX = lerp(bat.x1, bat.x2, .75);
+      const markY = lerp(bat.y1, bat.y2, .75);
+      const size = Math.max(1, bat.width * .34);
+      ctx.fillStyle = "#fff4ff";
+      ctx.shadowColor = "#d36cff";
+      ctx.shadowBlur = 3 * field.unit;
+      ctx.beginPath();
+      ctx.moveTo(markX + dx / length * size, markY + dy / length * size);
+      ctx.lineTo(markX + nx * size, markY + ny * size);
+      ctx.lineTo(markX - dx / length * size, markY - dy / length * size);
+      ctx.lineTo(markX - nx * size, markY - ny * size);
+      ctx.closePath();
+      ctx.fill();
+    } else if (tier.prestige === "infernal") {
+      band(.48, bat.width * .48, "#ffd85a", .8);
+      band(.9, bat.width * .72, "#fff0a0", 1);
+      ctx.strokeStyle = "#ffcc50";
+      ctx.shadowColor = "#ff3b16";
+      ctx.shadowBlur = 4 * field.unit;
+      ctx.globalAlpha = .78 * depthFade;
+      ctx.lineWidth = Math.max(.6, bat.width * .18);
+      ctx.beginPath();
+      ctx.moveTo(lerp(bat.x1, bat.x2, .55) + nx * bat.width * .12, lerp(bat.y1, bat.y2, .55) + ny * bat.width * .12);
+      ctx.lineTo(lerp(bat.x1, bat.x2, .93) + nx * bat.width * .12, lerp(bat.y1, bat.y2, .93) + ny * bat.width * .12);
+      ctx.stroke();
+    } else {
+      band(.43, bat.width * .46, "#f7d45e", .82);
+      band(.58, bat.width * .58, "#8cf4ff", .75);
+      band(.88, bat.width * .74, "#ffe77c", 1.08);
+      const coreStart = { x: lerp(bat.x1, bat.x2, .6), y: lerp(bat.y1, bat.y2, .6) };
+      const coreEnd = { x: lerp(bat.x1, bat.x2, .95), y: lerp(bat.y1, bat.y2, .95) };
+      ctx.strokeStyle = "#e9fdff";
+      ctx.shadowColor = "#4cecff";
+      ctx.shadowBlur = 5 * field.unit;
+      ctx.globalAlpha = .9 * depthFade;
+      ctx.lineWidth = Math.max(.7, bat.width * .2);
+      ctx.beginPath(); ctx.moveTo(coreStart.x, coreStart.y); ctx.lineTo(coreEnd.x, coreEnd.y); ctx.stroke();
+      ctx.fillStyle = "#fff5ad";
+      for (const t of [.69, .8]) {
+        const x = lerp(bat.x1, bat.x2, t);
+        const y = lerp(bat.y1, bat.y2, t);
+        const r = Math.max(.65, bat.width * .18);
+        ctx.beginPath(); ctx.arc(x - nx * bat.width * .23, y - ny * bat.width * .23, r, 0, Math.PI * 2); ctx.fill();
+      }
+    }
+    ctx.restore();
   }
 
   function drawBatSwingTrail(currentBat, layer) {
@@ -2462,6 +2804,25 @@
       ctx.moveTo(from.x2, from.y2);
       ctx.lineTo(to.x2, to.y2);
       ctx.stroke();
+
+      if (tier.prestige && index >= frames.length - 5) {
+        const dx = to.x2 - from.x2;
+        const dy = to.y2 - from.y2;
+        const segmentLength = Math.max(1, Math.hypot(dx, dy));
+        const offset = (tier.prestige === "celestial" ? 1.5 : 1) * field.unit * perspective;
+        const nx = -dy / segmentLength * offset;
+        const ny = dx / segmentLength * offset;
+        const accent = tier.prestige === "arcane" ? "#d88aff" : tier.prestige === "infernal" ? "#ff7a32" : "#f6cf55";
+        ctx.globalAlpha = ageFade * speedFactor * (tier.prestige === "celestial" ? .58 : .42);
+        ctx.strokeStyle = accent;
+        ctx.lineWidth = Math.max(.55, field.unit * (tier.prestige === "celestial" ? 1.05 : .8));
+        ctx.shadowColor = accent;
+        ctx.shadowBlur = (tier.prestige === "celestial" ? 5 : 3) * field.unit;
+        ctx.beginPath();
+        ctx.moveTo(from.x2 + nx, from.y2 + ny);
+        ctx.lineTo(to.x2 + nx, to.y2 + ny);
+        ctx.stroke();
+      }
 
       // When the barrel points into the camera, its projected path collapses.
       // Replace the missing long streak with a compact perspective smear.
@@ -2561,10 +2922,7 @@
   function drawBall(shown) {
     if (!shown) return;
     const field = scene();
-    const screenY = Math.min(
-      shown.y - (shown.z || 0) + (shown.depth || 0) * .1,
-      field.ground - shown.r
-    );
+    const screenY = projectedBallY(shown.y, shown.z, shown.depth, shown.r, field);
     const activeMagic = phase === "pitch" && ball?.released && !ball.hit ? ball.magicEffect : null;
     const pitchProgress = clamp(ball?.t || 0, 0, 1);
     let visibility = 1;
@@ -2579,7 +2937,9 @@
         .filter((point) => (now - point.at) / 1000 < point.life)
         .map((point) => ({
           ...point,
-          screenY: Math.min(point.y - (point.z || 0), scene().ground - point.r),
+          screenY: Number.isFinite(point.screenY)
+            ? point.screenY
+            : projectedBallY(point.y, point.z, point.depth, point.r, field),
           fade: clamp(1 - (now - point.at) / 1000 / point.life, 0, 1)
         }));
 
@@ -2588,7 +2948,7 @@
         ctx.save();
         ctx.lineCap = "round";
         ctx.lineJoin = "round";
-        ctx.shadowColor = colors.cream;
+        ctx.shadowColor = ball?.luckyHit ? "#8dff9c" : colors.cream;
         ctx.shadowBlur = shown.r * .55;
 
         // Draw a tapered ribbon one curved segment at a time. Age controls
@@ -2604,7 +2964,7 @@
           const midX = (from.x + to.x) * .5;
           const midY = (from.screenY + to.screenY) * .5;
           ctx.globalAlpha = alpha * visibility;
-          ctx.strokeStyle = colors.cream;
+          ctx.strokeStyle = ball?.luckyHit ? (index % 2 ? "#dfff72" : "#75ff9d") : colors.cream;
           ctx.lineWidth = Math.max(.6, lerp(from.r * .22, to.r * 1.05, progress));
           ctx.beginPath();
           ctx.moveTo(from.x, from.screenY);
@@ -2691,6 +3051,17 @@
         );
       }
     }
+    if (ball?.luckyHit && !shown.held && visibility > .04) {
+      ctx.save();
+      ctx.globalCompositeOperation = "lighter";
+      ctx.globalAlpha = visibility * .42;
+      ctx.strokeStyle = "#dfff72";
+      ctx.shadowColor = "#75ff9d";
+      ctx.shadowBlur = shown.r * 3.2;
+      ctx.lineWidth = Math.max(.75, shown.r * .28);
+      ctx.beginPath(); ctx.arc(shown.x, screenY, shown.r * 1.48, 0, Math.PI * 2); ctx.stroke();
+      ctx.restore();
+    }
     drawBallMark(shown.x, screenY, shown.r, visibility);
     ctx.globalAlpha = 1;
   }
@@ -2761,6 +3132,484 @@
     ctx.restore();
   }
 
+  const moonSpriteCache = new Map();
+
+  function cachedMoonSprite(radius) {
+    const key = Math.round(radius);
+    if (moonSpriteCache.has(key)) return moonSpriteCache.get(key);
+    const extent = Math.ceil(key * 1.5);
+    const sprite = document.createElement("canvas");
+    sprite.width = extent * 2;
+    sprite.height = extent * 2;
+    const moonCtx = sprite.getContext("2d");
+    moonCtx.translate(extent, extent);
+
+    // Cache the expensive lunar surface once. The live effect only rotates and
+    // scales this bitmap, so added terrain detail does not increase frame cost.
+    moonCtx.shadowColor = "rgba(255,244,201,.7)";
+    moonCtx.shadowBlur = key * .28;
+    moonCtx.fillStyle = "#d6d4c9";
+    moonCtx.beginPath(); moonCtx.arc(0, 0, key, 0, Math.PI * 2); moonCtx.fill();
+    moonCtx.shadowBlur = 0;
+
+    moonCtx.save();
+    moonCtx.beginPath(); moonCtx.arc(0, 0, key, 0, Math.PI * 2); moonCtx.clip();
+    const base = moonCtx.createRadialGradient(-key * .32, -key * .34, key * .05, 0, 0, key * 1.08);
+    base.addColorStop(0, "#faf9ef");
+    base.addColorStop(.48, "#d8d7cc");
+    base.addColorStop(.78, "#b3b2aa");
+    base.addColorStop(1, "#686963");
+    moonCtx.fillStyle = base;
+    moonCtx.fillRect(-key, -key, key * 2, key * 2);
+
+    // Irregular overlapping maria read as continents rather than four uniform
+    // cheese holes. Blur is safe here because this canvas is built only once.
+    moonCtx.globalCompositeOperation = "multiply";
+    moonCtx.filter = `blur(${Math.max(1, key * .018)}px)`;
+    const maria = [
+      [-.3, -.16, .31, .2, -.28, .22],
+      [.22, -.3, .23, .14, .2, .18],
+      [.3, .12, .28, .19, -.45, .17],
+      [-.12, .3, .2, .13, .34, .14],
+      [-.48, .34, .14, .09, -.1, .12]
+    ];
+    maria.forEach(([x, y, rx, ry, rotation, alpha]) => {
+      moonCtx.fillStyle = `rgba(86,88,84,${alpha})`;
+      moonCtx.beginPath();
+      moonCtx.ellipse(key * x, key * y, key * rx, key * ry, rotation, 0, Math.PI * 2);
+      moonCtx.fill();
+      moonCtx.beginPath();
+      moonCtx.ellipse(key * (x + rx * .38), key * (y - ry * .2), key * rx * .58, key * ry * .72, rotation + .22, 0, Math.PI * 2);
+      moonCtx.fill();
+    });
+    moonCtx.filter = "none";
+    moonCtx.globalCompositeOperation = "source-over";
+
+    let seed = 0x5f3759df;
+    const lunarRandom = () => {
+      seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0;
+      return seed / 4294967296;
+    };
+    const drawCrater = (x, y, craterRadius, squash = .78) => {
+      moonCtx.save();
+      moonCtx.translate(key * x, key * y);
+      moonCtx.scale(1, squash);
+      const radiusPx = key * craterRadius;
+      const bowl = moonCtx.createRadialGradient(-radiusPx * .28, -radiusPx * .32, radiusPx * .08, 0, 0, radiusPx);
+      bowl.addColorStop(0, "rgba(248,247,237,.48)");
+      bowl.addColorStop(.38, "rgba(161,160,151,.3)");
+      bowl.addColorStop(1, "rgba(75,77,74,.48)");
+      moonCtx.fillStyle = bowl;
+      moonCtx.beginPath(); moonCtx.arc(0, 0, radiusPx, 0, Math.PI * 2); moonCtx.fill();
+      moonCtx.lineWidth = Math.max(.7, radiusPx * .12);
+      moonCtx.strokeStyle = "rgba(255,255,246,.52)";
+      moonCtx.beginPath(); moonCtx.arc(0, 0, radiusPx * .92, Math.PI * 1.03, Math.PI * 1.82); moonCtx.stroke();
+      moonCtx.strokeStyle = "rgba(53,55,54,.42)";
+      moonCtx.beginPath(); moonCtx.arc(0, 0, radiusPx * .94, -.02, Math.PI * .82); moonCtx.stroke();
+      moonCtx.restore();
+    };
+
+    [
+      [-.36, -.34, .105, .76], [.37, -.12, .085, .7], [.14, .34, .13, .8],
+      [-.42, .22, .065, .72], [.48, .35, .052, .76], [.04, -.52, .046, .7]
+    ].forEach((crater) => drawCrater(...crater));
+    for (let index = 0; index < 24; index++) {
+      const angle = lunarRandom() * Math.PI * 2;
+      const distance = Math.sqrt(lunarRandom()) * .78;
+      drawCrater(
+        Math.cos(angle) * distance,
+        Math.sin(angle) * distance,
+        .012 + lunarRandom() * .035,
+        .64 + lunarRandom() * .27
+      );
+    }
+
+    // Fine deterministic albedo grain prevents the enlarged cached surface
+    // from becoming a perfectly smooth vector circle.
+    for (let index = 0; index < 180; index++) {
+      const angle = lunarRandom() * Math.PI * 2;
+      const distance = Math.sqrt(lunarRandom()) * .94;
+      const grain = .35 + lunarRandom() * 1.25;
+      moonCtx.globalAlpha = .035 + lunarRandom() * .09;
+      moonCtx.fillStyle = lunarRandom() > .5 ? "#ffffff" : "#5f615e";
+      moonCtx.beginPath();
+      moonCtx.arc(Math.cos(angle) * distance * key, Math.sin(angle) * distance * key, grain, 0, Math.PI * 2);
+      moonCtx.fill();
+    }
+    moonCtx.globalAlpha = 1;
+
+    const limb = moonCtx.createRadialGradient(-key * .38, -key * .34, key * .24, 0, 0, key * 1.08);
+    limb.addColorStop(.35, "rgba(255,255,255,.08)");
+    limb.addColorStop(.76, "rgba(39,42,40,.04)");
+    limb.addColorStop(1, "rgba(20,22,22,.42)");
+    moonCtx.fillStyle = limb;
+    moonCtx.fillRect(-key, -key, key * 2, key * 2);
+    moonCtx.restore();
+
+    moonCtx.strokeStyle = "rgba(255,253,231,.7)";
+    moonCtx.lineWidth = Math.max(1, key * .012);
+    moonCtx.beginPath(); moonCtx.arc(0, 0, key - moonCtx.lineWidth, 0, Math.PI * 2); moonCtx.stroke();
+    const cached = { sprite, extent };
+    moonSpriteCache.set(key, cached);
+    return cached;
+  }
+
+  let planeSpriteCache = null;
+
+  function cachedPlaneSprite() {
+    if (planeSpriteCache) return planeSpriteCache;
+    const sprite = document.createElement("canvas");
+    sprite.width = 340;
+    sprite.height = 150;
+    const planeCtx = sprite.getContext("2d");
+    planeCtx.translate(170, 75);
+    planeCtx.lineJoin = "round";
+    planeCtx.lineCap = "round";
+    planeCtx.strokeStyle = "#17212c";
+    planeCtx.lineWidth = 4;
+
+    const body = planeCtx.createLinearGradient(0, -26, 0, 24);
+    body.addColorStop(0, "#f7fbfd");
+    body.addColorStop(.48, "#cbd8df");
+    body.addColorStop(1, "#70818d");
+    planeCtx.fillStyle = body;
+    planeCtx.beginPath();
+    planeCtx.moveTo(-157, 1);
+    planeCtx.quadraticCurveTo(-147, -23, -110, -27);
+    planeCtx.lineTo(116, -22);
+    planeCtx.quadraticCurveTo(145, -18, 160, -4);
+    planeCtx.quadraticCurveTo(145, 16, 112, 20);
+    planeCtx.lineTo(-113, 23);
+    planeCtx.quadraticCurveTo(-148, 18, -157, 1);
+    planeCtx.closePath();
+    planeCtx.fill();
+    planeCtx.stroke();
+
+    // Main wing and stabilizer are drawn as structural shapes rather than a
+    // flat airplane glyph, which keeps the silhouette readable while banking.
+    planeCtx.fillStyle = "#9fb4c0";
+    planeCtx.beginPath();
+    planeCtx.moveTo(-5, -16);
+    planeCtx.lineTo(73, -68);
+    planeCtx.lineTo(102, -62);
+    planeCtx.lineTo(54, -8);
+    planeCtx.lineTo(102, 56);
+    planeCtx.lineTo(71, 61);
+    planeCtx.lineTo(-10, 17);
+    planeCtx.closePath();
+    planeCtx.fill();
+    planeCtx.stroke();
+    planeCtx.beginPath();
+    planeCtx.moveTo(104, -15);
+    planeCtx.lineTo(135, -54);
+    planeCtx.lineTo(153, -48);
+    planeCtx.lineTo(139, -6);
+    planeCtx.closePath();
+    planeCtx.fill();
+    planeCtx.stroke();
+
+    planeCtx.fillStyle = "#263d50";
+    planeCtx.beginPath();
+    planeCtx.moveTo(-136, -11);
+    planeCtx.quadraticCurveTo(-124, -21, -105, -21);
+    planeCtx.lineTo(-84, -20);
+    planeCtx.lineTo(-91, -7);
+    planeCtx.closePath();
+    planeCtx.fill();
+    planeCtx.fillStyle = "#38576d";
+    for (let index = 0; index < 10; index++) {
+      planeCtx.beginPath();
+      planeCtx.roundRect(-72 + index * 17, -12, 9, 6, 2);
+      planeCtx.fill();
+    }
+
+    const engine = planeCtx.createLinearGradient(0, -10, 0, 14);
+    engine.addColorStop(0, "#b9c8d0");
+    engine.addColorStop(1, "#53636d");
+    planeCtx.fillStyle = engine;
+    [-1, 1].forEach((side) => {
+      planeCtx.beginPath();
+      planeCtx.ellipse(49, side * 37, 22, 11, 0, 0, Math.PI * 2);
+      planeCtx.fill();
+      planeCtx.stroke();
+      planeCtx.fillStyle = "#17212c";
+      planeCtx.beginPath(); planeCtx.ellipse(32, side * 37, 5, 7, 0, 0, Math.PI * 2); planeCtx.fill();
+      planeCtx.fillStyle = engine;
+    });
+
+    planeCtx.strokeStyle = "#68c5d2";
+    planeCtx.lineWidth = 5;
+    planeCtx.beginPath(); planeCtx.moveTo(-104, 13); planeCtx.lineTo(126, 10); planeCtx.stroke();
+    planeSpriteCache = { sprite, width: sprite.width, height: sprite.height };
+    return planeSpriteCache;
+  }
+
+  function drawScoreCinematic(blast, progress, fade) {
+    const style = blast.style;
+    if (style !== "plane" && style !== "moon") return;
+    const field = scene();
+    ctx.save();
+
+    if (style === "plane") {
+      ctx.globalCompositeOperation = "source-over";
+      const crash = smooth(clamp((progress - .07) / .75, 0, 1));
+      const pathX = (value) => blast.x - field.playWidth * (.035 + value * .24);
+      const pathY = (value) => lerp(blast.y - 7 * field.unit, field.ground - 9 * field.unit, value * value);
+      const planeX = pathX(crash);
+      const planeY = pathY(crash);
+      const size = clamp(field.playWidth * .052, 52, 92);
+
+      if (progress < .16) {
+        const strike = clamp(1 - progress / .16, 0, 1);
+        ctx.globalCompositeOperation = "lighter";
+        ctx.globalAlpha = strike * .9;
+        ctx.strokeStyle = "#ffffff";
+        ctx.lineWidth = Math.max(1, 3 * field.unit * strike);
+        ctx.beginPath();
+        ctx.arc(planeX - size * .18, planeY, lerp(size * .08, size * .62, 1 - strike), 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.globalCompositeOperation = "source-over";
+      }
+
+      // Smoke follows the exact curved fall path, so the aircraft reads as a
+      // moving object rather than a symbol that simply rotates in place.
+      for (let index = 8; index >= 1; index--) {
+        const history = clamp(crash - index * .055, 0, 1);
+        if (history <= 0) continue;
+        const smokeFade = (1 - index / 10) * fade * .42;
+        ctx.globalAlpha = smokeFade;
+        ctx.fillStyle = index % 3 === 0 ? "#ffb45b" : index % 2 ? "#7f8792" : "#c8d0d7";
+        ctx.beginPath();
+        const driftX = Math.sin(index * 2.17 + progress * 4) * 1.2;
+        const driftY = Math.cos(index * 1.73 + progress * 3) * 1.2;
+        ctx.arc(pathX(history) + driftX, pathY(history) + driftY, size * (.12 + index * .025), 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+      const planeSprite = cachedPlaneSprite();
+      const planeLength = size * 2.18;
+      const planeScale = planeLength / planeSprite.width;
+      const planeAngle = -.04 - crash * 1.24 + Math.sin(progress * 24) * .035 * crash;
+      ctx.save();
+      ctx.translate(planeX, planeY);
+      ctx.rotate(planeAngle);
+      ctx.scale(planeScale, planeScale * lerp(1, .7, crash));
+      ctx.globalAlpha = clamp(fade * 1.35, 0, 1);
+      ctx.drawImage(planeSprite.sprite, -planeSprite.width * .5, -planeSprite.height * .5);
+
+      // A damaged wing separates late in the fall and rotates independently.
+      if (crash > .38) {
+        const broken = smooth((crash - .38) / .62);
+        ctx.save();
+        ctx.translate(size * (.3 + broken * 1.25), -size * (.18 + broken * .82));
+        ctx.rotate(broken * 5.4);
+        ctx.globalAlpha = fade * (1 - broken * .45);
+        ctx.fillStyle = "#879aa5";
+        ctx.strokeStyle = "#17212c";
+        ctx.lineWidth = 5;
+        ctx.beginPath();
+        ctx.moveTo(-28, -7); ctx.lineTo(35, -17); ctx.lineTo(19, 8); ctx.lineTo(-24, 12); ctx.closePath();
+        ctx.fill(); ctx.stroke();
+        ctx.restore();
+      }
+      ctx.restore();
+
+      ctx.save();
+      ctx.translate(planeX, planeY);
+      ctx.rotate(planeAngle);
+      ctx.fillStyle = "#ff9d3d";
+      ctx.shadowColor = "#ff6a2a";
+      ctx.shadowBlur = size * .42;
+      ctx.beginPath();
+      ctx.moveTo(size * .86, -size * .12);
+      ctx.lineTo(size * (1.48 + Math.sin(progress * 42) * .12), 0);
+      ctx.lineTo(size * .86, size * .12);
+      ctx.closePath();
+      ctx.fill();
+      ctx.restore();
+      ctx.restore();
+
+      if (crash > .77) {
+        const impact = smooth((crash - .77) / .23);
+        const impactX = pathX(1);
+        const impactY = pathY(1);
+        ctx.save();
+        ctx.globalCompositeOperation = "lighter";
+        ctx.globalAlpha = (1 - impact) * .92;
+        const radius = lerp(8, size * 1.85, impact);
+        const glow = ctx.createRadialGradient(impactX, impactY, 0, impactX, impactY, radius);
+        glow.addColorStop(0, "rgba(255,255,255,.98)");
+        glow.addColorStop(.25, "rgba(255,204,92,.92)");
+        glow.addColorStop(.58, "rgba(255,92,38,.68)");
+        glow.addColorStop(1, "rgba(255,92,38,0)");
+        ctx.fillStyle = glow;
+        ctx.beginPath(); ctx.arc(impactX, impactY, radius, 0, Math.PI * 2); ctx.fill();
+        ctx.restore();
+      }
+      return;
+    }
+
+    const fallClock = clamp((progress - .04) / .58, 0, 1);
+    const fall = Math.pow(fallClock, 2.35);
+    const impact = smooth(clamp((progress - .62) / .38, 0, 1));
+    const baseRadius = clamp(field.playHeight * .24, 140, 260);
+    const displayRadius = baseRadius * lerp(.88, 1.05, fall);
+    const moonX = blast.x - field.playWidth * lerp(.115, .095, fall);
+    const startY = field.primaryY - displayRadius * 1.08;
+    const endY = field.ground - displayRadius * .54;
+    const moonY = progress < .62
+      ? lerp(startY, endY, fall)
+      : endY + displayRadius * .045 * impact;
+    const moonFade = clamp(progress / .05, 0, 1) * clamp((1 - progress) / .07, 0, 1);
+    const cachedMoon = cachedMoonSprite(192);
+    const spriteScale = displayRadius / 192;
+    const moonRotation = progress * .1;
+    const impactX = moonX;
+    const impactY = field.ground - 3 * field.unit;
+
+    ctx.globalCompositeOperation = "source-over";
+    if (fallClock > .68) {
+      ctx.globalAlpha = moonFade * smooth((fallClock - .68) / .32) * .22;
+      ctx.fillStyle = "#24231f";
+      ctx.beginPath();
+      ctx.ellipse(impactX, impactY, displayRadius * .72, displayRadius * .1, 0, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    // Acceleration controls the afterimage gap. The moon no longer eases out
+    // before contact; its silhouettes spread farther apart as it speeds up.
+    if (progress < .62) {
+      const gap = displayRadius * (.035 + fallClock * .2);
+      for (let index = 3; index >= 1; index--) {
+        ctx.save();
+        ctx.globalAlpha = moonFade * fallClock * (.018 + index * .012);
+        ctx.translate(moonX, moonY - gap * index);
+        ctx.rotate(moonRotation - index * .01);
+        ctx.scale(spriteScale * (1 - index * .012), spriteScale * (1 - index * .012));
+        ctx.drawImage(cachedMoon.sprite, -cachedMoon.extent, -cachedMoon.extent);
+        ctx.restore();
+      }
+    }
+
+    ctx.globalAlpha = moonFade;
+    ctx.save();
+    ctx.translate(moonX, moonY);
+    ctx.rotate(moonRotation);
+    ctx.scale(spriteScale, spriteScale);
+    ctx.drawImage(cachedMoon.sprite, -cachedMoon.extent, -cachedMoon.extent);
+    ctx.restore();
+
+    if (progress < .62) {
+      ctx.save();
+      ctx.globalCompositeOperation = "lighter";
+      ctx.globalAlpha = moonFade * fallClock * .62;
+      ctx.strokeStyle = fallClock > .72 ? "#ff8e55" : "#ffe3a1";
+      ctx.shadowColor = ctx.strokeStyle;
+      ctx.shadowBlur = clamp(displayRadius * .07, 8, 20);
+      ctx.lineWidth = clamp(displayRadius * .04, 3, 10);
+      ctx.beginPath();
+      ctx.arc(moonX, moonY, displayRadius * .97, .08 * Math.PI, .92 * Math.PI);
+      ctx.stroke();
+      ctx.restore();
+    }
+
+    if (impact > 0) {
+      const flash = 1 - smooth(clamp(impact / .16, 0, 1));
+      const waveOne = smooth(clamp((impact - .03) / .62, 0, 1));
+      const waveTwo = smooth(clamp((impact - .18) / .7, 0, 1));
+      const dust = smooth(clamp((impact - .04) / .78, 0, 1));
+
+      // Surface fractures stay attached to the embedded moon instead of
+      // floating as an unrelated full-screen particle layer.
+      ctx.save();
+      ctx.translate(moonX, moonY);
+      ctx.rotate(moonRotation);
+      ctx.beginPath(); ctx.arc(0, 0, displayRadius * .96, 0, Math.PI * 2); ctx.clip();
+      ctx.globalAlpha = moonFade * smooth(impact / .42) * .72;
+      ctx.strokeStyle = "#4d4b45";
+      ctx.lineWidth = Math.max(1, 2.1 * field.unit);
+      ctx.lineCap = "round";
+      [-.52, -.24, .08, .34, .57].forEach((branch, index) => {
+        ctx.beginPath();
+        ctx.moveTo(0, displayRadius * .92);
+        ctx.lineTo(displayRadius * branch * .28, displayRadius * .65);
+        ctx.lineTo(displayRadius * branch * .62, displayRadius * (.42 - index * .035));
+        ctx.lineTo(displayRadius * branch * .48, displayRadius * (.2 - index * .025));
+        ctx.stroke();
+      });
+      ctx.restore();
+
+      ctx.globalCompositeOperation = "source-over";
+      ctx.globalAlpha = moonFade * (.5 + flash * .35);
+      ctx.fillStyle = "#36332d";
+      ctx.beginPath();
+      ctx.ellipse(impactX, impactY + 2 * field.unit, displayRadius * lerp(.5, 1.04, dust), displayRadius * lerp(.055, .13, dust), 0, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.globalCompositeOperation = "lighter";
+      [waveOne, waveTwo].forEach((wave, index) => {
+        if (wave <= 0 || wave >= 1) return;
+        ctx.globalAlpha = moonFade * Math.pow(1 - wave, 1.5) * (index ? .48 : .82);
+        ctx.strokeStyle = index ? "#ffb36b" : "#fff8d9";
+        ctx.lineWidth = Math.max(.8, (4.5 - index) * field.unit * (1 - wave));
+        ctx.beginPath();
+        ctx.ellipse(impactX, impactY, displayRadius * lerp(.25, 2.2 + index * .42, wave), displayRadius * lerp(.025, .24, wave), 0, Math.PI, Math.PI * 2);
+        ctx.stroke();
+      });
+
+      if (flash > 0) {
+        ctx.globalAlpha = flash * .1;
+        ctx.fillStyle = "#fffdf1";
+        ctx.fillRect(field.primaryX, field.primaryY, field.playWidth, field.playHeight);
+        const flashRadius = displayRadius * lerp(.22, 1.15, 1 - flash);
+        const impactFlash = ctx.createRadialGradient(impactX, impactY, 0, impactX, impactY, flashRadius);
+        impactFlash.addColorStop(0, "rgba(255,255,255,.98)");
+        impactFlash.addColorStop(.3, "rgba(255,214,123,.84)");
+        impactFlash.addColorStop(1, "rgba(255,145,66,0)");
+        ctx.globalAlpha = flash;
+        ctx.fillStyle = impactFlash;
+        ctx.beginPath(); ctx.arc(impactX, impactY, flashRadius, Math.PI, Math.PI * 2); ctx.fill();
+      }
+
+      // Deterministic rock fragments provide readable ballistic arcs without
+      // allocating new particles during the cinematic.
+      ctx.globalCompositeOperation = "source-over";
+      for (let index = 0; index < 18; index++) {
+        const delay = (index % 4) * .035;
+        const travel = clamp((impact - delay) / Math.max(.01, .78 - delay), 0, 1);
+        if (travel <= 0 || travel >= 1) continue;
+        const angle = Math.PI * (1.08 + index / 17 * .84);
+        const speed = displayRadius * (.48 + ((index * 37) % 11) / 10 * .72);
+        const debrisX = impactX + Math.cos(angle) * speed * travel;
+        const debrisY = impactY + Math.sin(angle) * speed * travel + displayRadius * .72 * travel * travel;
+        const size = Math.max(2, displayRadius * (.012 + (index % 3) * .006));
+        ctx.save();
+        ctx.translate(debrisX, debrisY);
+        ctx.rotate(index * 1.7 + travel * (5 + index % 4));
+        ctx.globalAlpha = moonFade * Math.sin(travel * Math.PI) * .85;
+        ctx.fillStyle = index % 3 ? "#a99f87" : "#5c5850";
+        ctx.beginPath();
+        ctx.moveTo(size, 0); ctx.lineTo(-size * .7, size * .55); ctx.lineTo(-size * .38, -size * .72); ctx.closePath();
+        ctx.fill();
+        ctx.restore();
+      }
+
+      for (let index = 0; index < 12; index++) {
+        const side = index % 2 ? 1 : -1;
+        const order = Math.floor(index / 2) + 1;
+        const cloudProgress = clamp((dust - order * .035) / Math.max(.1, 1 - order * .035), 0, 1);
+        if (cloudProgress <= 0) continue;
+        const cloudX = impactX + side * displayRadius * cloudProgress * (.32 + order * .21);
+        const cloudY = impactY - displayRadius * Math.sin(cloudProgress * Math.PI) * (.07 + order * .018);
+        const cloudRadius = displayRadius * (.05 + order * .012) * lerp(.65, 1.35, cloudProgress);
+        ctx.globalAlpha = moonFade * Math.pow(1 - cloudProgress, .55) * (.3 + order * .035);
+        ctx.fillStyle = order % 2 ? "#d4c7a8" : "#8e826e";
+        ctx.beginPath(); ctx.arc(cloudX, cloudY, cloudRadius, 0, Math.PI * 2); ctx.fill();
+      }
+    }
+    ctx.restore();
+  }
+
   function drawEdgeBlasts() {
     for (const blast of edgeBlasts) {
       const progress = clamp(1 - blast.life / blast.maxLife, 0, 1);
@@ -2772,6 +3621,11 @@
       const flash = Math.pow(clamp(1 - progress / .24, 0, 1), 2);
       ctx.save();
       ctx.globalCompositeOperation = "lighter";
+      drawScoreCinematic(blast, progress, fade);
+      if (style === "plane" || style === "moon") {
+        ctx.restore();
+        continue;
+      }
 
       // Top-tier contact briefly illuminates the whole transparent desktop,
       // making a MOON SHOT read as a different event rather than a larger copy.
@@ -2834,7 +3688,7 @@
 
       // Concentric half-shockwaves are clipped by the physical screen edge.
       // Their staggered timing reads as the boundary itself being punctured.
-      const waveCount = { chip: 1, dust: 1, slice: 2, pulse: 5, spiral: 6, prism: 7, nova: 9 }[style] || 1;
+      const waveCount = { chip: 1, dust: 1, slice: 2, pulse: 5, spiral: 6, prism: 7, nova: 9, plane: 6, moon: 7 }[style] || 1;
       for (let index = 0; index < waveCount; index++) {
         const wave = clamp((progress - index * .055) / .62, 0, 1);
         if (wave <= 0 || wave >= 1) continue;
@@ -3221,6 +4075,9 @@
   window.desktopGame.onPreviewHitEffects(previewHitEffects);
   window.desktopGame.onPreviewHomeRunEffects(previewHomeRunEffects);
   window.desktopGame.onPreviewPitcherCollision(previewPitcherCollision);
+  window.desktopGame.onChallengerBatPreview((enabled) => {
+    challengerBatPreview = enabled;
+  });
   window.desktopGame.onShowRanking(showStandaloneRanking);
   window.desktopGame.onBounds((bounds) => {
     const wasInitial = pitchNumber === 0 && phase === "waiting";
@@ -3244,7 +4101,16 @@
 
   resize();
   centerBatControl();
+  runBatTier = batTierForScore(personalBest);
+  personalBestOutput.textContent = `BEST ${personalBest.toLocaleString()}`;
   window.desktopGame.ready();
+  beginRankingSession();
   setTimeout(syncPersonalBestFromRanking, 1200);
+  const prewarmCinematics = () => {
+    cachedMoonSprite(192);
+    cachedPlaneSprite();
+  };
+  if ("requestIdleCallback" in window) requestIdleCallback(prewarmCinematics, { timeout: 1400 });
+  else setTimeout(prewarmCinematics, 900);
   requestAnimationFrame(frame);
 })();
